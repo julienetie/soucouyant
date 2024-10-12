@@ -1,4 +1,4 @@
-import { pending } from './helpers.js'
+import { pending, empty } from './helpers.js'
 import stateObjectPartial from './state-object.js'
 
 // Create main chain
@@ -27,4 +27,4 @@ const Debug = {
   // }
 }
 
-export { o, pending, Debug }
+export { o, pending, Debug, empty }

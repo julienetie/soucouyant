@@ -56,3 +56,9 @@ export const { isArray } = Array
 export const startsWithUppercase = string => /^[A-Z]/.test(string)
 
 export const empty = ''
+
+export const normalizeNumbers = value => {
+  if (value === Infinity) return Infinity
+  if (value === 0) return 0
+  return Math.min(Math.max(value, Number.MIN_SAFE_INTEGER), Number.MAX_SAFE_INTEGER)
+}

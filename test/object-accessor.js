@@ -1,11 +1,31 @@
 import { assertEquals, assertInstanceOf } from 'jsr:@std/assert'
 import { o, pending, empty } from '../src/index.js'
+import { areSetsSimilar, republish } from '../src/helpers.js'
 
+const compareMapKeys = (mapA, mapB) => {
+  const keysA = JSON.stringify(Array.from(mapA.keys()).sort())
+  const keysB = JSON.stringify(Array.from(mapB.keys()).sort())
+
+  return keysA === keysB
+}
+
+const compareSets = (setA, setB) => {
+  if (setA.size !== setB.size) return false
+
+  for (const element of setA) {
+    if (!setB.has(element)) return false
+  }
+
+  return true
+}
+
+// Example usage remains the same.
 Deno.test('o - Should be a function with expected properties', () => {
   assertInstanceOf(o, Function) // Check if o is a function
   assertInstanceOf(o.createChain, Function) // Check if o is a function
   assertEquals(o.chain.name, 'main')
 })
+
 Deno.test('o.`stateObject` - should return undefined for malformed namespaces', () => {
   // Cannot use an empty string
   o``
@@ -175,4 +195,98 @@ Deno.test('o.stateObject.object(...)` - should set plain object clone', () => {
 
   assertEquals(state2 === object2, false)
   assertEquals(state2, object2)
+})
+
+Deno.test('o.stateObject.array(...)` - should set array clone', () => {
+  o`stateObject > array`()
+  const defaultState = o.stateObject.array()
+  assertEquals(defaultState, pending)
+
+  const array = [1, 2, 3, 4]
+  const state = o.stateObject.array(array)
+
+  // The return of setting state is the exact same value of the state given
+  // It does not getState after placing it in the store.
+  assertEquals(state === array, true)
+  assertEquals(state, array)
+
+  const array2 = [1, 2, 3, 4]
+  o.stateObject.array(array2)
+  const state2 = o.stateObject.array()
+
+  assertEquals(state2 === array2, false)
+  assertEquals(state2.every((value, i) => value === array2[i]), true)
+})
+/*
+Deno.test('o.stateObject.map(...)` - should set map clone', () => {
+  o`stateObject > map`()
+  const defaultState = o.stateObject.map()
+  assertEquals(defaultState, pending)
+
+  const map = new Map([['a', 1], ['b', 2], [3, 'zap']])
+  const state = o.stateObject.map(map)
+
+  // The return of setting state is the exact same value of the state given
+  // It does not getState after placing it in the store.
+  assertEquals(state === map, true)
+  assertEquals(state, map)
+
+  const map2 = new Map([['a', 1], ['c', 2], [3, 'zazzzp']])
+  o.stateObject.map(map2)
+  const state2 = o.stateObject.map()
+
+  assertEquals(state2 === map2, false)
+  assertEquals(compareMapKeys(state2, map2), true)
+}) */
+
+/*
+Deno.test('o.stateObject.set(...)` - should set clone', () => {
+  o`stateObject > set`()
+  const defaultState = o.stateObject.set()
+  assertEquals(defaultState, pending)
+
+  const set = new Set(['one', 2, 'three', 4])
+  const state = o.stateObject.set(set)
+
+  // The return of setting state is the exact same value of the state given
+  // It does not getState after placing it in the store.
+  assertEquals(state === set, true)
+  assertEquals(state, set)
+
+  const set2 = new Set(['onse', 2, 'three', 4])
+  o.stateObject.set(set2)
+  const state2 = o.stateObject.set()
+
+  assertEquals(state2 === set2, false)
+  const areSetsEqual = areSetsSimilar(state2, set2)
+  assertEquals(areSetsEqual, true)
+}) */
+
+Deno.test('ostateObject.subscription.sub(...) - should subscrbe and action on changes', () => {
+  o`stateObject > subscription`()
+
+  o.stateObject.subscription.sub(({ state, idenitity, timestamp, direction }) => {
+    assertEquals(state, 'test')
+    assertEquals(typeof idenitity, 'number')
+    assertEquals(typeof timestamp, 'number')
+    assertEquals(direction, 'forward')
+  }, 'sub-1')
+
+  o.stateObject.subscription('test')
+})
+
+Deno.test('o.stateObject.republish(...) - should republish the last state without changing history', () => {
+  o`stateObject > republish`()
+  const defaultState = o.stateObject.republish()
+  assertEquals(defaultState, pending)
+
+  o.stateObject.republish('Hello World!')
+  const state = o.stateObject.republish()
+  assertEquals(state, 'Hello World!')
+
+  o.stateObject.republish(republish)
+  const state2 = o.stateObject.republish()
+  assertEquals(state2, 'Hello World!')
+
+  // Missing subscribe action
 })

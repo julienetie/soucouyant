@@ -492,6 +492,7 @@ const defaultChainConfig = {
   mode: 'volatile',
   jsonObjects: false,
   jsonArrays: false,
+  evictDisableClone: false, // Disables structuredClone for eviction state machine, may have undesirable results
   mergeFidelity: 0,
   integerSaturation: true,
   namespaceDepth: 4,
