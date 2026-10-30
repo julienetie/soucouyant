@@ -1,3 +1,4 @@
+import cache from './cache.js'
 import {
   pending,
   republish,
@@ -377,7 +378,60 @@ const overwriteEvictionState = (
   }
 }
 
-// const setState = (identity, state, options = {}) => {
+const raf = window.requestAnimationFrame
+
+const delayAsync = (duration) => {
+  return new Promise(resolve => {
+    let startTime = 0
+    let terminate = false
+    const loop = (timestamp) => {
+      startTime = startTime || timestamp
+      if (timestamp > startTime + duration && !terminate) {
+        resolve()
+        terminate = true
+      }
+      raf(loop)
+    }
+    raf(loop)
+  })
+}
+
+const forwardCallback = async ({ state, identity, mode }) => {
+  console.time('callbacks')
+  console.time('callback1')
+  console.log('FORWARD::', state, identity, mode)
+  const r = await delayAsync(3000)
+  console.timeEnd('callback1')
+  return r
+}
+
+const activeCallback = async ({ state, identity, mode }) => {
+  console.log('ACTIVE::', { state, identity, mode })
+  return await delayAsync(3000)
+}
+
+const tailCallback = async ({ state, identity, mode }) => {
+  const d = await delayAsync(3000)
+  console.log('TAIL::', state, identity, mode)
+  console.timeEnd('callbacks')
+  return d
+}
+
+const subscriptionCall = async ({ identity, ref, state }) => {
+  console.log({ cache, ref })
+
+  const subIdentity = Object.entries(cache.subscriptions[identity])
+
+  for (const [refKey, refValue] of subIdentity) {
+    console.log('refKey', refKey, refValue)
+    // Here we ned to call each callback async
+  }
+
+  forwardCallback && await cache.subscriptions[identity]['test-ref'].forwardCallback({ ref, state, identity })
+  // activeCallback && await activeCallback(parameters)
+  // tailCallback && await tailCallback(parameters)
+}
+
 const setState = (
   config,
   internal,
@@ -390,10 +444,11 @@ const setState = (
   // if (state === undefined) return console.error('state is undefined', state)
   if (identity === undefined) return console.error('identity is undefined', identity)
 
-  console.log('Acc setState: state', state, evictionStateMap)
-
   const currentTimestamp = getTimestamp()
   const { mode, mergeFidelity } = config
+
+  // console.trace({ state, identity, mode })
+
   if (mode === 'volatile') {
     overwriteEvictionState(
       config,
@@ -402,6 +457,12 @@ const setState = (
       identity,
       state
     )
+
+    subscriptionCall({
+      state,
+      identity,
+      mode
+    })
     return
   }
 
@@ -440,6 +501,12 @@ const setState = (
           }
       accumulator.push(frame)
     }
+
+    subscriptionCall({
+      state,
+      identity,
+      mode
+    })
   }
 }
 

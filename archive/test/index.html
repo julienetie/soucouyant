@@ -65,7 +65,7 @@
     <script type="module">
         import { o } from '../src/index.js'
 
-        window.o = o 
+/*         window.o = o 
         o`test > a123`(['This is default'])
         o.test.a123(state => console.log(state))
         // o`test > a123 ${['This is newer state']}` // This is inital state, this should break. 
@@ -78,7 +78,14 @@
         o.Monster.big.green.sound(state => console.log(state))
         o.Monster.big.green.sound(_ => ({noise: 'meoyow'}))
         o.Monster.big.green.sound(state => console.log(state))
-        
+  */       
+
+        o`stateObject > test`()
+        o.stateObject.test.sub(({state, identity, mode}) =>{
+            console.log('@@@@@@:::',state, identity, mode)
+        }, 'test-ref')
+
+        o.stateObject.test('Hello World!')
 
 
     </script>

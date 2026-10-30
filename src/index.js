@@ -1,30 +1,18 @@
-import { pending, empty } from './helpers.js'
-import stateObjectPartial from './state-object.js'
+// Soucouyant: state with a recorded, travelable history.
 
-// Create main chain
-const o = stateObjectPartial('main')
+import { setPendingAlias } from './core.js'
+import { isReservedAlias } from './positions.js'
 
-// Create additional timeline chains
-o.createChain = (chainName, config) => {
-  o[chainName] = stateObjectPartial(chainName, config)
+export { pending, republish } from './constants.js'
+export { o, freeze } from './accessor.js'
+export { head } from './head.js'
+export { chain } from './chain.js'
+export { mutex } from './mutex.js'
+
+// alias(name, value): names the frame the next publish records
+export const alias = (name, value) => {
+  if (typeof name !== 'string' || name.length === 0) throw new TypeError('alias() takes a non-empty string name')
+  if (isReservedAlias(name)) throw new TypeError(`"${name}" cannot be an alias: it reads as a direction, time, frame index, 'first' or 'present'`)
+  setPendingAlias(name)
+  return value
 }
-
-const Debug = {
-  // mode: {
-  //   set enable(_) {
-  //     // Throws errors instead of console.error
-  //   },
-  //   set enableOnAddressStart(addressStart) {
-  //     // String or array of addresses
-  //     // Throws errors insread of console.error
-  //   }
-  // },
-  // logStatsOnChange() {
-  //
-  // },
-  // tableStatsOnChange() {
-  //
-  // }
-}
-
-export { o, pending, Debug, empty }

@@ -47,23 +47,38 @@ const stateMachine = (chain, identity, state, isCreation) => {
      * @param {string} ref - subscription reference.
      * @param {Function} callback - On subscribe callback
      */
-  stateModifier.subscribe = (ref, callback) => {
+  stateModifier.sub = (...params) => {
+    // Get ref value
+    const ref = params.pop()
+    console.trace(ref)
+    // Get callback fns
+    const forwardCallback = params[0]
+    const activeCallback = params[1]
+    const reverseCallback = params[2]
+
+    // Store callback values
+    // const callbacks = {}
+    // forwardCallback && (callbacks.forwardCallback = forwardCallback)
+    // activeCallback && (callbacks.activeCallback = activeCallback)
+    // reverseCallback && (callbacks.reverseCallback = reverseCallback)
+
     if (cache.subscriptions[identity] === undefined) {
       cache.subscriptions[identity] = {}
       cache.suspend[identity] = {}
     }
+
     if (cache.subscriptions[identity][ref] === undefined) {
-      cache.suspend[identity][ref] = false
-      cache.subscriptions[identity][ref] = (...parameters) => {
-        if (!cache.suspend[identity][ref]) {
-          callback(...parameters)
-        }
+      cache.subscriptions[identity][ref] = {
+        forwardCallback,
+        activeCallback,
+        reverseCallback
       }
+      cache.suspend[identity][ref] = false
     } else {
-      console.error(`The subscriptions reference ${ref} is already in use for identity ${identity}`)
+      console
+        .error(`The subscriptions reference ${ref} is already in use for identity ${identity}`)
     }
   }
-
   /**
      * suspend method.
      * @param {string} ref - subscription reference.
@@ -93,14 +108,14 @@ const reservedWords = [
 
 let hasMain = 0
 /**
- * State object is a side effect represented by the "o" letter.
- * It takes a namespace address separeated by forward arrows and
- * an inital state.
- *
- * @param {string} address - The namespace address of the state object.
- * @param {*} state - The value of the state.
- * @returns {Function} StateObject.
- */
+* State object is a side effect represented by the "o" letter.
+* It takes a namespace address separeated by forward arrows and
+* an inital state.
+*
+* @param { string } address - The namespace address of the state object.
+* @param { *} state - The value of the state.
+* @returns { Function } StateObject.
+*/
 const stateObjectPartial = (chainName, config = {}) => {
   if (hasMain === 0 && chainName === 'main') {
     hasMain++
@@ -118,21 +133,21 @@ const stateObjectPartial = (chainName, config = {}) => {
     }
   }
   // Identity ensures that each
-  // state has a unique key for the:
-  // cacne.subscriptions[identity]
-  // as an object.
-  // That object then stores references for each
-  // subscription. See above.
+  /* state has a unique key for the:
+     cache.subscriptions[identity]
+     as an object.
+     That object then stores references for each
+     subscription.See above. */
   let identity = -1
   /**
-     *
-     * @param {Array} addressParts - Namespaces separated by >
-     * @param {number} count - 0.
-     * @param {*} state
-     * @param {number} length - Number of namespaces.
-     * @param {boolean} isCollection - false.
-     * @param {*} nextPart - null.
-     */
+    *
+    * @param { Array } addressParts - Namespaces separated by >
+    * @param { number } count - 0.
+  * @param {*} state
+  * @param { number } length - Number of namespaces.
+  * @param { boolean } isCollection - false.
+  * @param {*} nextPart - null.
+  */
   const createAddress = (chain, addressParts, count, state, length, isCollection, nextPart) => {
     if (count === 0 && length === 1) {
       nextPart = stateObject

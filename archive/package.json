@@ -1,0 +1,22 @@
+{
+  "name": "soucouyant",
+  "version": "0.0.1",
+  "description": "Relational State Management",
+  "main": "src/index.js",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/julienetie/soucouyant.git"
+  },
+  "author": "Julien Etienne",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/julienetie/soucouyant/issues"
+  },
+  "homepage": "https://github.com/julienetie/soucouyant#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.12.0",
+    "eslint": "^9.12.0",
+    "globals": "^15.10.0"
+  }
+}
