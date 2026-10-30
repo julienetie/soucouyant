@@ -1,4 +1,6 @@
 {
+  "author": "Julien Etienne",
+  "license": "MIT",
   "name": "soucouyant",
   "version": "0.1.0",
   "description": "State management with a recorded, travelable history: pub/sub, time travel, locking, finite states and trajectories.",
