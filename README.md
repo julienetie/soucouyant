@@ -87,7 +87,7 @@ head.seek('present')
 
 ## Why Soucouyant?
 
-- **Speed close to plain JavaScript.** A get costs about 1 ns and a publish about 17 ns, against 83 ns for Zustand and 1.1 µs for Redux Toolkit on the same machine (see [Performance](#performance)).
+- **Speed close to plain JavaScript.** A get costs about half a nanosecond, the same as reading a plain variable, and a publish about 17 ns, against 83 ns for Zustand and 1.1 µs for Redux Toolkit on the same machine (see [Performance](#performance)).
 - **History when you want it, not before.** Undo/redo and time travel are one import away, and cost nothing until you add it.
 - **The awkward parts built in.** Async races, finite states and server isolation are handled by the library rather than by convention.
 - **No lock-in.** Plain JavaScript, no framework dependency, and thin bindings for the frameworks you use.
@@ -383,7 +383,7 @@ Measured with `npm run bench` on a shared 2-vCPU cloud machine (Intel Xeon, abou
 
 | Scenario | Floor | Soucouyant | Legend-State 2.1 | Zustand 5 | Nanostores 1.5 | Redux Toolkit 2 | XState 5 | MobX 7 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Get | 0.5 ns | **1.1 ns** | 466 ns | 0.5 ns | 70 ns | 0.8 ns | 0.5 ns | 3.9 ns |
+| Get | 0.5 ns | **0.5 ns** | 583 ns | 0.8 ns | 85 ns | 0.8 ns | 0.7 ns | 4.4 ns |
 | Publish a primitive | 1 ns | **17 ns** | 3.4 µs | 83 ns | 49 ns | 1.1 µs | 3.9 µs | 184 ns |
 | Publish, 1 subscriber | 9 ns | **37 ns** | 3.3 µs | 121 ns | 146 ns | 2.3 µs | 2.7 µs | 396 ns |
 | Publish, 10 subscribers | 110 ns | **171 ns** | 5.2 µs | 307 ns | 398 ns | 2.4 µs | 4.5 µs | 3.1 µs |
@@ -392,7 +392,7 @@ Measured with `npm run bench` on a shared 2-vCPU cloud machine (Intel Xeon, abou
 
 Notes on the table:
 
-- **Get** through the full path `o.app.settings.theme.colour()` costs the same as through a cached reference: V8 folds the path as constant.
+- **Get** through a cached reference costs the same as reading a plain variable. The full path `o.app.settings.theme.colour()` adds one property load per level, about 1.0 ns in all here.
 - **Subscriber benchmarks** use `execution: 'sync'`.
 - **The batched row** uses `async-queue`, which coalesces a burst into one notification per stateObject. The other libraries notify on every set.
 

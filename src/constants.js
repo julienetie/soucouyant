@@ -5,8 +5,6 @@
 export const pending = Symbol.for('soucouyant.pending')
 export const republish = Symbol.for('soucouyant.republish')
 
-// Internal sentinel: a stateObject called with no argument is a get
-export const GET = Symbol('soucouyant.get')
 // Internal sentinel: a release function called with no argument only unlocks
 export const NO_VALUE = Symbol('soucouyant.no-value')
 

@@ -4,6 +4,10 @@ All notable changes are listed here. Soucouyant follows [semantic versioning](ht
 
 ## Unreleased
 
+### Performance
+
+- A get is about 2.7 times faster: 0.8 ns per read instead of 2.1 ns in a tight loop. Through a cached reference it now costs the same as reading a plain variable, and less than Zustand's `getState()`. Callback publishes are faster too. The API is unchanged.
+
 ## 0.2.0
 
 A complete rewrite. Nothing from earlier versions carries over.

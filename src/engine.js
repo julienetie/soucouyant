@@ -11,7 +11,7 @@
 // by the stateObject's integer id, cold fields in one shape-stable record.
 
 import {
-  GET, pending, republish,
+  pending, republish,
   FINITE, LOCKED, DIRTY, TRANSITIONS, WANTS_PROPS, HAS_SUBSCRIBERS,
   FORWARD, REVERSE, directionNames,
   BUFFERED_VALUE, BUFFERED_CALLBACK, ALL_KEY
@@ -827,22 +827,30 @@ let writeState = writeDirect
 export let subscribeRoute = subscribeFromArguments
 export let unsubscribeRoute = unsubscribe
 
+// A get is a call with no argument (or undefined). With no access layer it
+// reads the captured cell directly: the fast path matches when the input
+// equals fastRead.input, which is undefined. While a layer is installed
+// (isolation, dev-mode scope) fastRead.input is a private symbol no caller
+// can pass, so every call goes through readState or writeState instead.
+// One compare covers both the get check and the layer check. It is a
+// property of a const object rather than a module `let` because V8 checks a
+// `let` for the temporal dead zone on every read, and this read is most of a
+// get: the object measured about a quarter faster
+const NO_FAST_READ = Symbol('soucouyant.no-fast-read')
+const fastRead = { input: undefined }
+
 // Isolation (o.isolate) and dev-mode scope checks wrap these
 export const installAccess = (access) => {
-  accessLayered = access !== baseAccess
+  fastRead.input = access === baseAccess ? undefined : NO_FAST_READ
   readState = access.read
   writeState = access.write
   subscribeRoute = access.subscribe
   unsubscribeRoute = access.unsubscribe
 }
 
-// With no access layer (isolation, dev-mode scope) a get reads the captured
-// cell directly; layered reads go through readState
-let accessLayered = false
-
 export const createStateObject = (id) => {
   const cell = headCells[id]
-  return (input = GET) => input === GET ? (accessLayered ? readState(id) : cell.value) : writeState(id, input)
+  return (input) => input === fastRead.input ? cell.value : input === undefined ? readState(id) : writeState(id, input)
 }
 
 // ---------------------------------------------------------------------------
