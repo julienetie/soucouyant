@@ -1,6 +1,6 @@
 {
   "name": "soucouyant",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fast JavaScript state management in two weights: a small core, and temporal for undo/redo history, time travel and trajectories.",
   "keywords": [
     "state",
