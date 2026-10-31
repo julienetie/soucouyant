@@ -1,6 +1,6 @@
-# Soucouyant (Alpha)
+<img width="1296" height="830" alt="soucouyant-butterfly-yellow" src="https://github.com/user-attachments/assets/be67b61d-ac78-41ea-9064-a5f737cd2688" />
 
-<img align="center" src="https://github.com/user-attachments/assets/60e17077-a633-4791-b0b8-59e7c46b962c" width="800">
+# Soucouyant (Alpha)
 
 ## Relational State Management
 
