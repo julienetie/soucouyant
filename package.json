@@ -1,15 +1,39 @@
 {
-  "author": "Julien Etienne",
-  "license": "MIT",
   "name": "soucouyant",
-  "version": "0.1.0",
-  "description": "State management with a recorded, travelable history: pub/sub, time travel, locking, finite states and trajectories.",
-  "type": "module",
-  "main": "./dist/soucouyant-core.js",
-    "repository": {
+  "version": "0.2.0",
+  "description": "Fast JavaScript state management in two weights: a small core, and temporal for undo/redo history, time travel and trajectories.",
+  "keywords": [
+    "state",
+    "state-management",
+    "store",
+    "pubsub",
+    "undo",
+    "redo",
+    "time-travel",
+    "history",
+    "finite-state",
+    "mutex",
+    "react",
+    "vue",
+    "angular",
+    "svelte",
+    "nextjs"
+  ],
+  "homepage": "https://github.com/julienetie/soucouyant#readme",
+  "bugs": {
+    "url": "https://github.com/julienetie/soucouyant/issues"
+  },
+  "repository": {
     "type": "git",
     "url": "git+https://github.com/julienetie/soucouyant.git"
   },
+  "author": {
+    "name": "Julien Etienne",
+    "url": "https://github.com/julienetie"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/soucouyant-core.js",
   "exports": {
     ".": "./dist/soucouyant-core.js",
     "./temporal": "./dist/soucouyant-temporal.js",
@@ -36,6 +60,7 @@
   },
   "scripts": {
     "build": "rollup -c --silent && node scripts/format-dist.js",
+    "size": "node scripts/size.js",
     "test": "npm run test:core && npm run test:temporal && npm run test:core-with-temporal",
     "test:core": "node --test \"test/core/*.test.js\"",
     "test:temporal": "node --test \"test/temporal/*.test.js\"",
@@ -95,6 +120,7 @@
   },
   "standard": {
     "ignore": [
+      "archive/**",
       "test/natives/**"
     ]
   }

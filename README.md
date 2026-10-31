@@ -2,13 +2,16 @@
 
 # Soucouyant (Alpha)
 
+[![CI](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml/badge.svg)](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml)
+[![core 8.8 kB gzip](https://img.shields.io/badge/core-8.8%20kB%20gzip-blue)](#build)
+[![temporal 10.9 kB gzip](https://img.shields.io/badge/temporal-10.9%20kB%20gzip-blue)](#build)
+[![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 ## Relational State Management
 
 Soucouyant is a JavaScript state management library. It comes in two weights: **core** and **temporal**. For most apps, the core on its own is enough. Temporal adds recorded history, e.g. undo/redo and time travel, and trajectories, e.g. timed animation sequences.
 
 Although Soucouyant is a full featured state management system, please remember there are no brownie points for over-engineering your application. **Respect simplicity as a first principle**.
-
-*Soucouyant is state management with an optional recorded, travelable history. With history on, every publish is a frame on one timeline (the chain), a playhead (the head) moves along it, and subscribers hear about what the head shows.*
 
 - **Get is one field load.** Publishing a primitive allocates nothing.
 - **Time travel in production.** Seek by frame, time or alias. Long jumps cost about the number of stateObjects, not the number of frames.
@@ -18,6 +21,49 @@ Although Soucouyant is a full featured state management system, please remember 
 - **Bindings** for React, Vue, Angular, Svelte and Next.js.
 - **No framework dependency.** It runs in browsers and Node.js 22.5 and later.
 - **Two files.** `soucouyant` is the core: state, subscriptions and the mutex. `soucouyant/temporal` adds recorded history, time travel, trajectories and storage. Import temporal only if you need them.
+
+## Install
+
+```sh
+npm install soucouyant
+```
+
+Or, without a bundler, load `dist/soucouyant-core.min.js` through an import map (see [Build](#build)).
+
+## Quick start
+
+The core covers most apps:
+
+```js
+import { o } from 'soucouyant'
+
+o`cart > items`([])
+  `cart > open`(false)
+
+o.cart.items.sub((items) => render(items))
+
+o.cart.open(true)                               // publish
+o.cart.items((items) => [...items, 'sorrel'])   // publish from the current state
+o.cart.open()                                   // true: get
+```
+
+Undo and redo need temporal:
+
+```js
+import { o, head, chain } from 'soucouyant/temporal'
+
+o.config({ persist: true })
+chain.purge('auto')        // a new edit after an undo discards the redo frames
+
+o`editor > text`('')
+o.editor.text('Hello')
+o.editor.text('Hello, world')
+
+head.seek('rev')           // undo: 'Hello'
+head.seek('fwd')           // redo: 'Hello, world'
+```
+
+A longer temporal example:
 
 ```js
 import { o, head, chain, mutex, alias, pending } from 'soucouyant/temporal'
@@ -39,7 +85,17 @@ head.seek('rev')                     // undo one frame
 head.seek('present')
 ```
 
+## Why Soucouyant?
+
+- **Speed close to plain JavaScript.** A get costs about 1 ns and a publish about 17 ns, against 83 ns for Zustand and 1.1 µs for Redux Toolkit on the same machine (see [Performance](#performance)).
+- **History when you want it, not before.** Undo/redo and time travel are one import away, and cost nothing until you add it.
+- **The awkward parts built in.** Async races, finite states and server isolation are handled by the library rather than by convention.
+- **No lock-in.** Plain JavaScript, no framework dependency, and thin bindings for the frameworks you use.
+
 ## Contents
+
+- [Install](#install)
+- [Quick start](#quick-start)
 
 - [Imports](#imports)
 - [Declaring state](#declaring-state)
@@ -56,7 +112,9 @@ head.seek('present')
 - [Devtools](#devtools)
 - [Performance](#performance)
 - [Changes from the original spec](#changes-from-the-original-spec)
+- [Build](#build)
 - [Development](#development)
+- [Contributing](#contributing)
 
 ## Imports
 
@@ -179,6 +237,8 @@ o.config({
 ## The head
 
 The head, the chain, trajectories and storage need `soucouyant/temporal`.
+
+With history on, every publish is a frame on one timeline, the chain. The head is a playhead that moves along it, and subscribers hear about whatever the head shows.
 
 ```js
 head.seek('fwd') // also 'rev', '>3', '<3', 'first', 'present'
@@ -435,6 +495,7 @@ Temporal loads the core by relative URL, so it resolves to the same file as the 
 ```sh
 npm install
 npm run build            # ./dist
+npm run size             # file sizes, and a check against the gzip budgets
 npm test                 # all three runs below, against ./src
 npm run test:core        # test/core: the core alone, temporal never loaded
 npm run test:temporal    # test/temporal: history, chain, trajectories, storage, devtools
@@ -446,13 +507,13 @@ npm run lint             # StandardJS
 npm run bench            # all benchmark groups; npm run bench -- notify for one
 ```
 
-### What is a Soucouyant?
+## Contributing
+
+Don't hesitate, just contribute. [CONTRIBUTING.md](CONTRIBUTING.md) covers the code style, the core/temporal boundary, tests and benchmarks. Changes are listed in [CHANGELOG.md](CHANGELOG.md), and security issues go through [SECURITY.md](SECURITY.md).
+
+## What is a Soucouyant?
 
 A soucouyant is a mythical figure from Caribbean folklore.
-
-### Contributing
-
-Don't hesitate just contribute. More guidelines will be introduced overtime.
 
 ---
 
