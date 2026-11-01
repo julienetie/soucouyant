@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soucouyant examples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/*
+  The examples index. Each example keeps its own look, so this page stays
+  plain: one list, and each entry carries the accent colour of the page it
+  opens, as a hint of what you'll find there.
+*/
+:root {
+  --page: #f1f2f0;
+  --ink: #1b1f1d;
+  --muted: #5d6662;
+  --line: #d6d9d5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 17px/1.55 'Instrument Sans', system-ui, sans-serif;
+}
+
+main { max-width: 760px; margin: 0 auto; padding: 56px 24px 64px; }
+
+h1 { margin: 0; font: 400 clamp(36px, 6vw, 52px)/1.1 'Young Serif', Georgia, serif; }
+.intro { color: var(--muted); margin: 12px 0 40px; max-width: 58ch; }
+code { font-size: 0.9em; background: #e3e6e2; padding: 1px 5px; border-radius: 4px; }
+
+ol { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+
+li { border-bottom: 1px solid var(--line); }
+
+/* The whole entry is the link; the bar on the left is the example's colour */
+li a {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  gap: 20px;
+  padding: 22px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+li a::before { content: ''; background: var(--accent); border-radius: 3px; }
+li a:hover h2 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+li a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+
+h2 { margin: 0; font: 400 24px/1.25 'Young Serif', Georgia, serif; }
+li p { margin: 6px 0 8px; }
+.uses { font-size: 14px; color: var(--muted); }
+
+footer { margin-top: 32px; font-size: 15px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Soucouyant examples</h1>
+  <p class="intro">Four single-page apps, each one HTML file with its JavaScript and CSS inline and commented. Every page has an <em>Under the hood</em> panel showing the state, the subscriptions and what Soucouyant is doing.</p>
+
+  <ol>
+    <li style="--accent: #c2185b">
+      <a href="shop.html">
+        <div>
+          <h2>Pepperpot Pantry</h2>
+          <p>A shop that uses the core alone, as fully as a shop allows: a catalogue loaded while <code>pending</code>, a basket locked by the mutex during payment, a checkout built on finite states, and discount codes checked by async callbacks.</p>
+          <span class="uses">soucouyant-core.js</span>
+        </div>
+      </a>
+    </li>
+    <li style="--accent: #2346d8">
+      <a href="paint-editor.html">
+        <div>
+          <h2>Atelier</h2>
+          <p>A paint editor with a Photoshop-style history panel. Every stroke is a frame on the chain; undo, redo, the scrubber and bookmarks move the head, and the history survives a reload.</p>
+          <span class="uses">soucouyant-temporal.js, indexeddb.js</span>
+        </div>
+      </a>
+    </li>
+    <li style="--accent: #d6452f">
+      <a href="turnstile.html">
+        <div>
+          <h2>Turnstile</h2>
+          <p>A walk cycle driven by a keyframe trajectory, in a world where time can run backwards. Inverted functions undo what the proceeding functions did: footprints lift, a broken vase mends.</p>
+          <span class="uses">soucouyant-temporal.js</span>
+        </div>
+      </a>
+    </li>
+    <li style="--accent: #6c55d1">
+      <a href="live-currency-dashboard.html">
+        <div>
+          <h2>Scenario desk</h2>
+          <p>Live exchange rates with what-if scenarios. Each scenario is a timeline branched off the market, running alongside it with its own history.</p>
+          <span class="uses">soucouyant-polychrony.js</span>
+        </div>
+      </a>
+    </li>
+  </ol>
+
+  <footer>Run <code>npm run examples</code> from the repository root to build Soucouyant and serve these pages.</footer>
+</main>
+</body>
+</html>

@@ -3,3 +3,6 @@ dist/
 *.db
 *.db-wal
 *.db-shm
+src/polychrony/instance.generated.js
+# Copied in by npm run examples
+examples/*.js

@@ -14,6 +14,7 @@ import terser from '@rollup/plugin-terser'
 const source = (path) => fileURLToPath(new URL(`./src/${path}`, import.meta.url))
 const core = source('soucouyant-core.js')
 const temporal = source('soucouyant-temporal.js')
+const polychrony = source('soucouyant-polychrony.js')
 
 const frameworks = ['react', 'vue', '@angular/core', 'svelte', 'svelte/reactivity']
 const isExternal = (id) => frameworks.includes(id) || id.startsWith('node:') || id === core || id === temporal
@@ -24,7 +25,10 @@ const onwarn = (warning, warn) => {
 }
 
 const library = {
-  input: { 'soucouyant-core': core, 'soucouyant-temporal': temporal },
+  // Polychrony imports temporal, which imports core, so each file holds only
+  // its own modules. Polychrony also carries the timeline factory that
+  // scripts/build-instance.js generates: a separate copy of core and temporal
+  input: { 'soucouyant-core': core, 'soucouyant-temporal': temporal, 'soucouyant-polychrony': polychrony },
   external: (id) => frameworks.includes(id) || id.startsWith('node:'),
   onwarn,
   // Lets soucouyant-core.js also export the bindings temporal imports, rather

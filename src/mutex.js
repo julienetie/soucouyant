@@ -51,9 +51,28 @@ const lockEverything = () => {
   }
 }
 
+// Set by soucouyant/polychrony: returns the mutex of the timeline that owns a
+// target, or undefined when no timeline does
+let foreignMutex = null
+export const setForeignMutex = (finder) => { foreignMutex = finder }
+
+const owningMutex = (target) => {
+  const owner = foreignMutex === null ? undefined : foreignMutex(target)
+  if (owner === undefined) throw new TypeError('mutex expects a stateObject or o')
+  return owner
+}
+
+const isOwnStateObject = (target) => idOfStateObject.has(target)
+
 export const mutex = {
-  lock: (target) => lockEverythingTargets.has(target) ? lockEverything() : lockStateObject(idOfLockTarget(target)),
-  unlock: (target) => lockEverythingTargets.has(target) ? unlockAll() : unlockObject(idOfLockTarget(target)),
+  lock: (target) => {
+    if (lockEverythingTargets.has(target)) return lockEverything()
+    return isOwnStateObject(target) ? lockStateObject(idOfLockTarget(target)) : owningMutex(target).lock(target)
+  },
+  unlock: (target) => {
+    if (lockEverythingTargets.has(target)) return unlockAll()
+    return isOwnStateObject(target) ? unlockObject(idOfLockTarget(target)) : owningMutex(target).unlock(target)
+  },
   // Publishes waiting behind a lock
   get buffer () {
     return bufferedEntries()

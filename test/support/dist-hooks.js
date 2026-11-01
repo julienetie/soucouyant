@@ -6,7 +6,7 @@ const source = new URL('../../src/', import.meta.url).href
 const dist = new URL('../../dist/js/', import.meta.url).href
 const minified = process.env.SOUCOUYANT_DIST === 'min'
 
-const libraryFiles = ['soucouyant-core.js', 'soucouyant-temporal.js']
+const libraryFiles = ['soucouyant-core.js', 'soucouyant-temporal.js', 'soucouyant-polychrony.js']
 const libraryUrl = (path) => dist + (minified ? path.replace(/\.js$/, '.min.js') : path)
 
 export const resolve = async (specifier, context, nextResolve) => {

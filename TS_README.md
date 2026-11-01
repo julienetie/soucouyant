@@ -31,6 +31,7 @@ For everything that isn't about types, see the [README](README.md).
 - [Writing generic code](#writing-generic-code)
 - [Mutex](#mutex)
 - [Temporal](#temporal)
+- [Timelines](#timelines)
 - [Storage adapters](#storage-adapters)
 - [Framework bindings](#framework-bindings)
 - [Tagged templates](#tagged-templates)
@@ -49,6 +50,7 @@ Soucouyant is an ES module package. Imports are the same as in JavaScript:
 ```ts
 import { o } from 'soucouyant'                         // the core
 import { o, head, chain } from 'soucouyant/temporal'   // the core plus history
+import { o, chain } from 'soucouyant/polychrony'       // history plus timelines
 import { useSoucouyant } from 'soucouyant/bindings/react'
 ```
 
@@ -224,6 +226,15 @@ state.editor.text.unsub(ref, named)                       // number removed
 const render = (text: string, props: Props<string>) => {}
 ```
 
+Inverted functions, which run when the head moves back (see [Inverted functions](README.md#inverted-functions)), are typed the same way:
+
+```ts
+state.chat.messages.sub(
+  (messages, props) => {},   // messages: string[]; props.direction: 'fwd' | 'rev'
+  (messages, props) => {}    // the same types; props.rev is the state being undone
+)
+```
+
 ## Writing generic code
 
 Every stateObject is a `StateObject<T>`, so helpers can be generic over the state type:
@@ -292,6 +303,26 @@ state.player.direction.trajectory.fwd()                             // 'up' | 'd
 Durations are typed as `` `${number}${'ms' | 's' | 'm' | 'h'}` `` (the `Duration` type). For `intervals` by property name, plain object states allow only their numeric properties; keyframes allow any name, since they may carry fields of their own.
 
 Frames carry the address of their stateObject and an `unknown` state: one chain holds every stateObject's frames.
+
+## Timelines
+
+`soucouyant/polychrony` adds `chain.create()`, `chain.get()` and `chain.list()` to the chain's type when it's imported. A timeline is typed `Timeline`: the same type as `o`, with its own `head` and `chain`, so a registered shape types every timeline too.
+
+```ts
+import { o, chain, alias, type Timeline } from 'soucouyant/polychrony'
+
+const forecast = chain.create('forecast', { mergeFidelity: 0 })   // Timeline
+forecast.rates.usdJpy(149)            // ✓ typed from the registered shape
+forecast.rates.usdJpy('high')         // ✗
+forecast.head.seek('first')
+forecast.chain.name                   // string
+forecast.chain.delete()               // boolean
+
+const found = chain.get('forecast')   // Timeline | undefined
+chain.create('bad', { colour: 'red' }) // ✗ options are o.config() options
+```
+
+Import `alias` from `soucouyant/polychrony` rather than temporal: it names the next frame on whichever timeline records it. `head` and `chain` are reserved names on `o`, so `o({ head: 1 })` is a type error.
 
 ## Storage adapters
 
@@ -405,5 +436,11 @@ From `soucouyant/temporal`:
 | `Chain`, `ChainMeta`, `Frame<T>`, `FrameInput`, `StoredFrameSlice` | the chain |
 | `Trajectory<T, E>`, `TrajectoryOptions<T, E>`, `TrajectoryDescription<T>`, `Continuation` | trajectories |
 | `StorageAdapter`, `StorageBatch`, `StoredFrame`, `StorageOpenOptions`, `StorageOpenResult`, `OfflineStorageOptions`, `OfflineStorageMode` | storage |
+
+From `soucouyant/polychrony`:
+
+| Type | |
+| --- | --- |
+| `Timeline`, `TimelineChain`, `TimelineControls` | timelines |
 
 The bindings export `SoucouyantRune<T>` and `SoucouyantStore<T>` (Svelte), `Snapshot` and `SoucouyantStateProps` (Next.js), and the storage adapters export their options types.

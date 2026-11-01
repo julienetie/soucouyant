@@ -1,7 +1,7 @@
 // Run with: node --allow-natives-syntax --expose-gc test/natives/optimization.js
 // Checks that V8 optimizes the hot paths, that namespaces stay in fast
 // mode, and that steady-state publishing does not allocate: first with core
-// alone, then with soucouyant-temporal.js loaded.
+// alone, then with soucouyant-temporal.js loaded, then with timelines.
 import { PerformanceObserver } from 'node:perf_hooks'
 import { o } from '../../src/soucouyant-core.js'
 
@@ -79,6 +79,28 @@ const seekBack = () => { head.seek('rev'); head.seek('fwd') }
 ;%PrepareFunctionForOptimization(seekBack)
 for (let i = 0; i < 1000; i++) seekBack()
 check('seek round trips run', head.meta().isHeadPresent)
+
+// Now plug in timelines: the main timeline's code is untouched, so its hot
+// paths must stay optimized and allocation-free while another timeline,
+// running its own copy of the engine, records alongside it
+const polychrony = await import('../../src/soucouyant-polychrony.js')
+console.log('-- with soucouyant-polychrony.js loaded and a second timeline recording')
+const timeline = polychrony.chain.create('natives')
+const timelineValue = timeline.bench.flat
+for (let i = 0; i < 200000; i++) timelineValue(i & 1023)
+for (const fn of [readDeep, writeDeep, writeCallback]) {
+  for (let i = 0; i < 100000; i++) fn(i)
+  check(`main ${fn.name} stays optimized`, isOptimized(fn))
+}
+const mainWithTimeline = await countMinorGc(() => {
+  for (let i = 0; i < 2000000; i++) value(i & 1023)
+})
+check('2,000,000 recorded publishes on main, with a timeline alive, cause no scavenge', mainWithTimeline === 0, `${mainWithTimeline} scavenges`)
+const onTimeline = await countMinorGc(() => {
+  for (let i = 0; i < 2000000; i++) timelineValue(i & 1023)
+})
+check('2,000,000 recorded publishes on the timeline cause no scavenge', onTimeline === 0, `${onTimeline} scavenges`)
+check('the timeline kept its own state', timeline.bench.flat() !== undefined && o.bench.flat() === value())
 
 const failed = results.filter((passed) => !passed).length
 console.log(failed === 0 ? '\nall checks passed' : `\n${failed} check(s) failed`)

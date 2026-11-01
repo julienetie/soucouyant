@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turnstile · Soucouyant keyframe animation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*
+  Turnstile: a walk cycle driven by a Soucouyant trajectory, in a world
+  where time can run backwards.
+
+  Two colours carry the whole idea. Red is time running forward; blue is
+  time inverted. The page, the agent's scarf, the clock and the direction
+  marker all switch between them together, so you always know which way
+  time is going. Everything else is concrete grey and ink.
+*/
+:root {
+  --concrete: #dfe3e6;     /* page */
+  --slab: #f3f5f6;         /* stage and panels */
+  --ink: #1a1d21;          /* text, the agent */
+  --muted: #5d6670;        /* secondary text */
+  --line: #c4cbd1;         /* borders, the ground */
+  --forward: #d6452f;      /* time running forward */
+  --inverted: #2f6bd8;     /* time running backward */
+  --world: var(--forward); /* whichever is current */
+}
+
+body.inverted { --world: var(--inverted); }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--concrete);
+  color: var(--ink);
+  font: 16px/1.5 Barlow, system-ui, sans-serif;
+}
+
+button, input { font: inherit; color: inherit; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--slab);
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 500;
+}
+
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--world); outline-offset: 2px; }
+button.go { background: var(--world); border-color: var(--world); color: #fff; }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 28px 24px 40px; }
+
+/* ---- Header: the title and a square that reads the same every way ------ */
+
+header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+
+h1 {
+  margin: 0;
+  font: 700 clamp(40px, 7vw, 72px)/1 'Chakra Petch', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* The title's letters run left to right in forward time and mirror when
+   time is inverted */
+h1 span { display: inline-block; transition: transform 0.5s; }
+body.inverted h1 span { transform: scaleX(-1); }
+
+header p { margin: 10px 0 0; max-width: 60ch; color: var(--muted); }
+
+/* The Sator square, about two thousand years old: the same read across,
+   down, backwards or upwards. A palindrome is what this page animates */
+.sator {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: 2px;
+  font: 700 15px/22px 'Chakra Petch', sans-serif;
+  text-align: center;
+}
+
+.sator span { background: var(--slab); border-radius: 2px; }
+.sator span.centre { background: var(--world); color: #fff; transition: background 0.4s; }
+
+/* ---- Stage -------------------------------------------------------------- */
+
+.stage {
+  margin-top: 24px;
+  background: var(--slab);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border-top: 6px solid var(--world);
+  transition: border-color 0.4s;
+}
+
+.stage svg { display: block; width: 100%; height: auto; }
+
+.readout {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Chakra Petch', sans-serif;
+  pointer-events: none;
+}
+
+.clock { font-size: 34px; font-weight: 700; color: var(--world); font-variant-numeric: tabular-nums; transition: color 0.4s; }
+.direction { font-size: 15px; font-weight: 500; text-align: right; }
+.direction b { display: block; font-size: 22px; color: var(--world); transition: color 0.4s; }
+
+/* The agent: limbs are lines, redrawn each animation frame */
+.limb { stroke: var(--ink); stroke-width: 9; stroke-linecap: round; fill: none; }
+.limb.back { stroke: #4a525b; }
+.scarf { fill: var(--world); transition: fill 0.4s; }
+
+/* Footprints: stamped in forward time, lifted in inverted time */
+.footprint { fill: var(--ink); opacity: 0.55; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .footprint.stamp { animation: stamp 0.25s ease-out; }
+  .footprint.lift { animation: lift 0.25s ease-in forwards; }
+  @keyframes stamp { from { transform: scale(2.2); opacity: 0; } }
+  @keyframes lift { to { transform: scale(2.2); opacity: 0; } }
+}
+
+/* The vase: its shards fly apart, and fly back together the same way */
+.shard {
+  fill: #8a96a3;
+  stroke: var(--slab);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* The revolving door spins while time is turning round */
+.door { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  body.turning .door { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+}
+
+/* ---- Controls ----------------------------------------------------------- */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.controls .spacer { flex: 1; }
+.timeline-track { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.timeline-track input { width: 100%; accent-color: var(--world); }
+.story { margin: 12px 0 0; min-height: 1.5em; }
+
+/* ---- Under the hood ----------------------------------------------------- */
+
+.hood { margin-top: 24px; background: var(--slab); border-radius: 8px; padding: 16px 18px; }
+.hood summary { cursor: pointer; font: 700 18px 'Chakra Petch', sans-serif; }
+.hood-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 14px; }
+.hood table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.hood th { text-align: left; color: var(--muted); font-weight: 500; }
+.hood th, .hood td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.hood td .inverted-count { color: var(--inverted); font-weight: 500; }
+.hood dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 14px; margin: 12px 0 0; }
+.hood dt { color: var(--muted); }
+.hood dd { margin: 0; font-variant-numeric: tabular-nums; }
+.hood pre { margin: 0; font-size: 12px; background: var(--concrete); padding: 12px; border-radius: 4px; white-space: pre-wrap; }
+
+@media (max-width: 720px) {
+  .page { padding: 20px 16px 32px; }
+  header { grid-template-columns: 1fr; }
+  .hood-grid { grid-template-columns: minmax(0, 1fr); }
+  .clock { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1><span>T</span><span>U</span><span>R</span><span>N</span><span>S</span><span>T</span><span>I</span><span>L</span><span>E</span></h1>
+      <p>An agent walks to the turnstile and time turns round. Going forward, a trajectory moves him through the keyframes of a walk cycle and he leaves footprints and breaks a vase. Coming back, the head runs back along the chain and the inverted functions undo it all: the footprints lift, the vase puts itself back together.</p>
+    </div>
+    <div class="sator" aria-label="The Sator square, a two-way palindrome">
+      <span>S</span><span>A</span><span>T</span><span>O</span><span>R</span>
+      <span>A</span><span>R</span><span>E</span><span>P</span><span>O</span>
+      <span>T</span><span>E</span><span class="centre">N</span><span>E</span><span>T</span>
+      <span>O</span><span>P</span><span>E</span><span>R</span><span>A</span>
+      <span>R</span><span>O</span><span>T</span><span>A</span><span>S</span>
+    </div>
+  </header>
+
+  <section class="stage" aria-label="The stage">
+    <div class="readout">
+      <span class="clock" id="clock">0:00.0</span>
+      <span class="direction"><b id="direction-arrow">▶ Forward</b><span id="direction-note">Time runs forward</span></span>
+    </div>
+    <svg viewBox="0 0 960 360" id="stage" role="img" aria-label="An agent walking towards a revolving door">
+      <!-- The ground -->
+      <line x1="0" x2="960" y1="300" y2="300" stroke="var(--line)" stroke-width="2"/>
+      <g id="footprints"></g>
+
+      <!-- The vase, as five shards -->
+      <g id="vase"></g>
+
+      <!-- The turnstile: a revolving door -->
+      <g transform="translate(880 230)">
+        <rect x="-46" y="-90" width="92" height="160" rx="6" fill="none" stroke="var(--line)" stroke-width="3"/>
+        <g class="door">
+          <line x1="-40" x2="40" y1="-10" y2="-10" stroke="var(--world)" stroke-width="5"/>
+          <line x1="0" x2="0" y1="-50" y2="30" stroke="var(--world)" stroke-width="5"/>
+        </g>
+      </g>
+
+      <!-- The agent. Limbs at the back are drawn first -->
+      <g id="agent">
+        <line class="limb back" id="arm-back-upper"/><line class="limb back" id="arm-back-lower"/>
+        <line class="limb back" id="leg-back-upper"/><line class="limb back" id="leg-back-lower"/>
+        <line class="limb" id="torso" style="stroke-width: 16"/>
+        <path class="scarf" id="scarf"/>
+        <circle id="head" r="14" fill="var(--ink)"/>
+        <line class="limb" id="leg-front-upper"/><line class="limb" id="leg-front-lower"/>
+        <line class="limb" id="arm-front-upper"/><line class="limb" id="arm-front-lower"/>
+      </g>
+    </svg>
+  </section>
+
+  <div class="controls">
+    <button class="go" id="walk">Walk</button>
+    <button id="moonwalk" title="trajectory.reverse(): the keyframes play in reverse order">Moonwalk</button>
+    <button id="invert" title="Run the head back along the chain">Invert time</button>
+    <button id="replay" title="Run the head forward again to the present">Run forward again</button>
+    <span class="spacer"></span>
+    <button id="reset">Start over</button>
+  </div>
+  <div class="timeline-track">
+    <span>Recorded past</span>
+    <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Move the head through the recorded past">
+    <span id="scrub-label">Frame 0</span>
+  </div>
+  <p class="story" id="story">Press Walk.</p>
+
+  <details class="hood" open>
+    <summary>Under the hood</summary>
+    <div class="hood-grid">
+      <div>
+        <table>
+          <thead><tr><th>stateObject</th><th>State at the head</th><th>Proceeding</th><th>Inverted</th></tr></thead>
+          <tbody id="calls"></tbody>
+        </table>
+        <dl id="stats"></dl>
+      </div>
+      <pre><code>// Each keyframe is a pose, held for `duration` ms.
+// The trajectory steps through them and runs each
+// keyframe's action as it becomes active
+o`agent > pose`('contact-front', walkCycle)
+o.agent.pose.trajectory({ keyframeActions: true })
+o.agent.pose.trajectory.play()
+
+// Forward: stamp new footprints.
+// Inverted: lift the ones that haven't happened yet
+o.world.footprints.sub(stampFootprints, liftFootprints)
+
+// Inversion is the head running back along the chain
+head.seek('rev')</code></pre>
+    </div>
+  </details>
+</div>
+
+<script type="module">
+// ===========================================================================
+// Turnstile: trajectories, keyframe actions and inverted functions
+//
+// Forward time: a trajectory steps o.agent.pose through the keyframes of a
+// walk cycle. Each keyframe's action moves the agent along, stamps a
+// footprint on a heel strike and breaks the vase when he reaches it. Every
+// one of those publishes is recorded as a frame.
+//
+// Inverted time: at the turnstile, the trajectory pauses and the head runs
+// back along the chain, frame by frame, at the speed it was recorded.
+// Nothing is published. Each stateObject's inverted function undoes its
+// proceeding function: footprints lift, the vase reassembles, and the poses
+// play backwards so the agent walks back to where he started.
+// ===========================================================================
+
+// The file is copied next to the examples by `npm run examples`
+import { o, head, chain } from '../soucouyant-temporal.js'
+
+// ---------------------------------------------------------------------------
+// 1. Configure history
+// ---------------------------------------------------------------------------
+
+o.config({
+  // Record every publish: the chain is the past the head runs back along
+  persist: true,
+  // Several publishes to one stateObject within 200ms would merge into one
+  // frame by default; every pose is a step in the past, so keep them all
+  mergeFidelity: 0
+})
+
+// ---------------------------------------------------------------------------
+// 2. The walk cycle: eight keyframes
+//
+// A keyframe is a finite state that's an object: its `state` is what gets
+// published, `duration` is how long it holds, and `action` runs as it
+// becomes active. Everything else on it is ours: here, joint angles.
+//
+// Angles are degrees from straight down; positive points the way he walks.
+// A knee bends back by `knee` degrees, an elbow forward by `elbow`.
+// `front` is the leg nearer to us, `back` the one behind
+// ---------------------------------------------------------------------------
+
+const stride = 9 // pixels moved per keyframe
+
+// One half of the cycle, for the front leg leading. The other half mirrors
+// it, swapping front and back
+const halfCycle = [
+  { name: 'contact', hip: [26, -22], knee: [2, 10], shoulder: [-24, 24], elbow: [12, 22], bob: 0, heelStrike: true },
+  { name: 'down', hip: [14, -16], knee: [14, 32], shoulder: [-16, 16], elbow: [14, 18], bob: 4, heelStrike: false },
+  { name: 'passing', hip: [0, 12], knee: [4, 62], shoulder: [-4, 4], elbow: [12, 12], bob: 1, heelStrike: false },
+  { name: 'up', hip: [-14, 24], knee: [6, 30], shoulder: [12, -12], elbow: [16, 12], bob: -3, heelStrike: false }
+]
+
+const swap = ([a, b]) => [b, a]
+
+// The action every keyframe runs as it becomes active (defined in section 4)
+const keyframeAction = (state, props) => onKeyframe(props.keyframe)
+
+const walkCycle = [
+  ...halfCycle.map((pose) => ({ ...pose, side: 'front' })),
+  ...halfCycle.map((pose) => ({
+    ...pose,
+    side: 'back',
+    hip: swap(pose.hip),
+    knee: swap(pose.knee),
+    shoulder: swap(pose.shoulder),
+    elbow: swap(pose.elbow)
+  }))
+].map((pose) => ({
+  state: `${pose.name}-${pose.side}`, // what o.agent.pose holds
+  duration: 120,
+  startDelay: 0,
+  endDelay: 0,
+  action: keyframeAction,
+  ...pose
+}))
+
+const keyframeByState = new Map(walkCycle.map((keyframe) => [keyframe.state, keyframe]))
+
+// ---------------------------------------------------------------------------
+// 3. Declarations
+// ---------------------------------------------------------------------------
+
+const startX = 70
+const vaseX = 470
+const turnstileX = 820
+
+o`agent > pose`('contact-front', walkCycle) // finite: the keyframes
+  `agent > x`(startX)
+  `world > footprints`([]) // [{ x, side }]
+  `world > vase`('whole', ['whole', 'broken'])
+
+// The trajectory: loop through the keyframes, holding each for its
+// duration, running each one's action. Configuring it again resets it to
+// the keyframe the pose is on, playing forward
+const setUpTrajectory = () => o.agent.pose.trajectory({ continuation: 'loop', keyframeActions: true })
+setUpTrajectory()
+
+// The frame the run starts from. Inversion stops here: before it are only
+// the declarations
+let origin = head.meta().index
+
+// Moonwalking is trajectory.reverse() instead of trajectory.play()
+let moonwalking = false
+
+// ---------------------------------------------------------------------------
+// 4. Keyframe actions: what happens in forward time
+//
+// These publish, so they only run forward. Everything they do is recorded,
+// and inverted time plays it back the other way
+// ---------------------------------------------------------------------------
+
+// Where the leading foot lands, relative to the hips
+const footReach = (keyframe, leg) =>
+  Math.sin(rad(keyframe.hip[leg])) * thigh + Math.sin(rad(keyframe.hip[leg] - keyframe.knee[leg])) * shin
+
+const onKeyframe = (keyframe) => {
+  o.agent.x((current) => current + stride)
+  const position = o.agent.x()
+
+  if (keyframe.heelStrike) {
+    const leg = keyframe.side === 'front' ? 0 : 1
+    o.world.footprints((prints) => [...prints, { x: Math.round(position + footReach(keyframe, leg)), side: keyframe.side }])
+  }
+
+  if (position >= vaseX - 34 && o.world.vase() === 'whole') o.world.vase('broken')
+
+  if (position >= turnstileX - 40) {
+    // He's in the turnstile: stop walking, and turn time round
+    o.agent.pose.trajectory.pause()
+    story('He steps into the turnstile. Time turns round.')
+    setTimeout(() => runThroughTime('rev'), 500)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Drawing the agent
+//
+// The subscribers below set a target pose and position; this loop eases the
+// limbs towards them each animation frame
+// ---------------------------------------------------------------------------
+
+const thigh = 36
+const shin = 36
+const upperArm = 27
+const forearm = 25
+const groundY = 300
+const rad = (degrees) => degrees * Math.PI / 180
+const $ = (selector) => document.querySelector(selector)
+
+const shown = { hip: [26, -22], knee: [2, 10], shoulder: [-24, 24], elbow: [12, 22], bob: 0, x: startX }
+const target = { ...shown }
+const blend = (from, to, amount) => from + (to - from) * amount
+const blendPair = (from, to, amount) => [blend(from[0], to[0], amount), blend(from[1], to[1], amount)]
+
+const setLine = (id, x1, y1, x2, y2) => {
+  const line = document.getElementById(id)
+  line.setAttribute('x1', x1.toFixed(1))
+  line.setAttribute('y1', y1.toFixed(1))
+  line.setAttribute('x2', x2.toFixed(1))
+  line.setAttribute('y2', y2.toFixed(1))
+}
+
+const drawAgent = () => {
+  const hipY = groundY - thigh - shin + shown.bob
+  const shoulderY = hipY - 50
+  const { x } = shown
+  for (const [leg, name] of [[1, 'back'], [0, 'front']]) {
+    const kneeX = x + Math.sin(rad(shown.hip[leg])) * thigh
+    const kneeY = hipY + Math.cos(rad(shown.hip[leg])) * thigh
+    const shinAngle = rad(shown.hip[leg] - shown.knee[leg])
+    setLine(`leg-${name}-upper`, x, hipY, kneeX, kneeY)
+    setLine(`leg-${name}-lower`, kneeX, kneeY, kneeX + Math.sin(shinAngle) * shin, kneeY + Math.cos(shinAngle) * shin)
+
+    const elbowX = x + Math.sin(rad(shown.shoulder[leg])) * upperArm
+    const elbowY = shoulderY + Math.cos(rad(shown.shoulder[leg])) * upperArm
+    const forearmAngle = rad(shown.shoulder[leg] + shown.elbow[leg])
+    setLine(`arm-${name}-upper`, x, shoulderY, elbowX, elbowY)
+    setLine(`arm-${name}-lower`, elbowX, elbowY, elbowX + Math.sin(forearmAngle) * forearm, elbowY + Math.cos(forearmAngle) * forearm)
+  }
+  setLine('torso', x, hipY, x, shoulderY - 4)
+  const headElement = $('#head')
+  headElement.setAttribute('cx', x.toFixed(1))
+  headElement.setAttribute('cy', (shoulderY - 24).toFixed(1))
+  // The scarf trails behind him, whichever way time is going
+  $('#scarf').setAttribute('d', `M${x - 7},${shoulderY - 6} h14 l-4,10 l-22,${8 + shown.bob} l4,-8 z`)
+}
+
+const animate = () => {
+  // Close a quarter of the gap each frame: smooth, and it keeps up
+  shown.hip = blendPair(shown.hip, target.hip, 0.35)
+  shown.knee = blendPair(shown.knee, target.knee, 0.35)
+  shown.shoulder = blendPair(shown.shoulder, target.shoulder, 0.35)
+  shown.elbow = blendPair(shown.elbow, target.elbow, 0.35)
+  shown.bob = blend(shown.bob, target.bob, 0.35)
+  shown.x = blend(shown.x, target.x, 0.35)
+  drawAgent()
+  requestAnimationFrame(animate)
+}
+
+// ---------------------------------------------------------------------------
+// 6. Subscriptions: proceeding and inverted functions
+//
+// For the pose and position, both directions do the same thing: show the
+// state the head is on. The footprints and the vase are where the inverted
+// functions earn their keep: each does the opposite of its proceeding
+// function, as an animation of its own
+// ---------------------------------------------------------------------------
+
+const calls = {}
+const count = (address, kind) => {
+  calls[address] ??= { proceeding: 0, inverted: 0 }
+  calls[address][kind]++
+}
+
+const showPose = (state) => {
+  const keyframe = keyframeByState.get(state)
+  if (keyframe === undefined) return
+  Object.assign(target, { hip: keyframe.hip, knee: keyframe.knee, shoulder: keyframe.shoulder, elbow: keyframe.elbow, bob: keyframe.bob })
+}
+
+o.agent.pose.sub(
+  (state) => { count('agent > pose', 'proceeding'); showPose(state) },
+  (state) => { count('agent > pose', 'inverted'); showPose(state) }
+)
+
+o.agent.x.sub(
+  (x) => { count('agent > x', 'proceeding'); target.x = x },
+  (x) => { count('agent > x', 'inverted'); target.x = x }
+)
+
+// Footprints. Proceeding stamps the new ones; inverted lifts the ones that
+// are no longer in the past. One call can cover several frames, so both
+// work from the list they're given rather than assuming one step
+const footprintLayer = $('#footprints')
+const footprintElement = ({ x, side }) => {
+  const print = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse')
+  print.setAttribute('class', 'footprint stamp')
+  print.setAttribute('cx', x)
+  print.setAttribute('cy', groundY + (side === 'front' ? 9 : 4))
+  print.setAttribute('rx', 11)
+  print.setAttribute('ry', 3.5)
+  return print
+}
+
+// Elements still on screen, oldest first, excluding ones being lifted
+const standingPrints = () => [...footprintLayer.children].filter((print) => !print.classList.contains('lift'))
+
+o.world.footprints.sub(
+  // Proceeding: stamp whatever is new
+  (prints) => {
+    count('world > footprints', 'proceeding')
+    const standing = standingPrints()
+    // A rebuild (Start over) can shrink the list in forward time
+    for (const print of standing.slice(prints.length)) print.remove()
+    for (const print of prints.slice(standing.length)) footprintLayer.append(footprintElement(print))
+  },
+  // Inverted: lift the newest prints until only `prints.length` remain
+  (prints) => {
+    count('world > footprints', 'inverted')
+    for (const print of standingPrints().slice(prints.length)) {
+      print.classList.replace('stamp', 'lift')
+      // The lift animation is the stamp played the other way. With reduced
+      // motion there's no animation, so the print goes straight away
+      if (getComputedStyle(print).animationName === 'none') print.remove()
+      else setTimeout(() => print.remove(), 260)
+    }
+  }
+)
+
+// The vase: five shards. Breaking sends each to a resting place on the
+// ground; mending brings each back along the same path
+const shards = [
+  { points: '-14,-46 14,-46 10,-36 -10,-36', to: [-56, 40, -80] },
+  { points: '-10,-36 10,-36 22,-14 0,-14 -22,-14', to: [44, 30, 120] },
+  { points: '-22,-14 0,-14 -4,10 -24,4', to: [-34, 18, -150] },
+  { points: '0,-14 22,-14 24,4 -4,10', to: [70, 18, 200] },
+  { points: '-24,4 -4,10 24,4 14,20 -14,20', to: [10, 6, 30] }
+]
+const vaseLayer = $('#vase')
+vaseLayer.setAttribute('transform', `translate(${vaseX} ${groundY - 20})`)
+for (const shard of shards) {
+  const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon')
+  polygon.setAttribute('class', 'shard')
+  polygon.setAttribute('points', shard.points)
+  shard.element = polygon
+  vaseLayer.append(polygon)
+}
+
+const breakVase = () => {
+  for (const { element, to: [dx, dy, turn] } of shards) element.style.transform = `translate(${dx}px, ${dy}px) rotate(${turn}deg)`
+}
+const mendVase = () => {
+  for (const { element } of shards) element.style.transform = ''
+}
+
+o.world.vase.sub(
+  // Proceeding: it breaks (or, after a rebuild, is simply whole)
+  (state) => {
+    count('world > vase', 'proceeding')
+    if (state === 'broken') breakVase()
+    else mendVase()
+  },
+  // Inverted: the opposite. Going back past the moment it broke, it mends
+  (state) => {
+    count('world > vase', 'inverted')
+    if (state === 'whole') {
+      mendVase()
+      story('The vase gathers itself up off the floor.')
+    } else {
+      breakVase()
+    }
+  }
+)
+
+// ---------------------------------------------------------------------------
+// 7. Inversion: run the head along the chain
+//
+// 'rev' steps the head back one frame; 'fwd' steps it forward. Each step
+// waits as long as the gap between the two frames when they were recorded,
+// so the past plays back at the speed it happened
+// ---------------------------------------------------------------------------
+
+let runner = null
+
+const setDirection = (next) => {
+  document.body.classList.toggle('inverted', next === 'inverted')
+  $('#direction-arrow').textContent = next === 'inverted' ? '◀ Inverted' : '▶ Forward'
+  $('#direction-note').textContent = next === 'inverted' ? 'Time runs backward' : 'Time runs forward'
+}
+
+const stopRunner = () => {
+  clearTimeout(runner)
+  runner = null
+  document.body.classList.remove('turning')
+}
+
+const runThroughTime = (step) => {
+  stopRunner()
+  o.agent.pose.trajectory.pause()
+  setDirection(step === 'rev' ? 'inverted' : 'forward')
+  document.body.classList.add('turning')
+  setTimeout(() => document.body.classList.remove('turning'), 900)
+  if (step === 'rev') story('Inverted. Everything he did comes undone, newest first.')
+  else story('Forward again, through the same past. Nothing he did changes.')
+
+  const next = () => {
+    const before = head.meta()
+    if (step === 'fwd' && before.isHeadPresent) return finish(step)
+    if (step === 'rev' && before.index <= origin) return finish(step)
+    const index = head.seek(step)
+    if (index === before.index) return finish(step)
+    const after = head.meta()
+    runner = setTimeout(next, Math.min(250, Math.abs(after.timestamp - before.timestamp)))
+  }
+  next()
+}
+
+const finish = (step) => {
+  stopRunner()
+  if (step === 'rev') story('Back where he started, before any of it happened. The past is still recorded: run it forward again.')
+  else story('The present. Press Start over for a new run.')
+  render()
+}
+
+// ---------------------------------------------------------------------------
+// 8. Controls
+// ---------------------------------------------------------------------------
+
+const story = (text) => { $('#story').textContent = text }
+
+const walkStory = () => moonwalking
+  ? 'Moonwalking: the keyframes run backwards, but time still runs forward. Footprints still appear.'
+  : 'Walking. Each keyframe publishes a pose, and its action moves him on.'
+
+$('#walk').addEventListener('click', () => {
+  const trajectory = o.agent.pose.trajectory
+  if (trajectory().playing) {
+    trajectory.pause()
+    story('Paused.')
+  } else {
+    setDirection('forward')
+    // play() runs through the keyframes in order; reverse() in reverse
+    if (moonwalking) trajectory.reverse()
+    else trajectory.play()
+    story(walkStory())
+  }
+  render()
+})
+
+// trajectory.reverse() plays the keyframes in the opposite order. His legs
+// move backwards, yet time still runs forward: footprints still appear and
+// the vase still breaks. That's the difference from inversion
+$('#moonwalk').addEventListener('click', () => {
+  moonwalking = !moonwalking
+  const trajectory = o.agent.pose.trajectory
+  if (trajectory().playing) {
+    if (moonwalking) trajectory.reverse()
+    else trajectory.play()
+    story(walkStory())
+  } else {
+    story(moonwalking ? 'Moonwalk is on. Press Walk.' : 'Moonwalk is off. Press Walk.')
+  }
+  render()
+})
+
+$('#invert').addEventListener('click', () => runThroughTime('rev'))
+$('#replay').addEventListener('click', () => runThroughTime('fwd'))
+
+$('#reset').addEventListener('click', () => {
+  stopRunner()
+  o.agent.pose.trajectory.pause()
+  head.seek('present')
+  // Put the world back, then make that the starting point: clear() drops
+  // every frame and keeps the current states as the base
+  o.agent.pose('contact-front')
+  o.agent.x(startX)
+  o.world.footprints([])
+  o.world.vase('whole')
+  chain.clear()
+  setUpTrajectory()
+  origin = head.meta().index
+  setDirection('forward')
+  story('Press Walk.')
+})
+
+// Dragging the scrubber moves the head by hand. Dragging left runs the
+// inverted functions, dragging right the proceeding ones
+const scrub = $('#scrub')
+scrub.addEventListener('input', () => {
+  stopRunner()
+  o.agent.pose.trajectory.pause()
+  const index = Number(scrub.value)
+  setDirection(index < head.meta().index ? 'inverted' : 'forward')
+  head.seek(index)
+})
+
+// ---------------------------------------------------------------------------
+// 9. Readouts: the clock, the scrubber, and the drawer
+// ---------------------------------------------------------------------------
+
+const render = () => {
+  const headMeta = head.meta()
+  const meta = chain.meta()
+  const empty = meta.lastIndex < meta.firstIndex
+  const first = chain.find(origin + 1)
+  const seconds = empty || first === undefined || headMeta.index <= origin ? 0 : (headMeta.timestamp - first.timestamp) / 1000
+  $('#clock').textContent = `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(1).padStart(4, '0')}`
+
+  scrub.min = origin
+  scrub.max = Math.max(origin, meta.lastIndex)
+  if (document.activeElement !== scrub) scrub.value = headMeta.index
+  $('#scrub-label').textContent = `Frame ${headMeta.index} of ${meta.lastIndex}`
+
+  const trajectory = o.agent.pose.trajectory()
+  const running = runner !== null
+  const atTurnstile = o.agent.x() >= turnstileX - 40
+  $('#walk').textContent = trajectory.playing ? 'Pause' : 'Walk'
+  $('#walk').disabled = running || !headMeta.isHeadPresent || atTurnstile
+  $('#moonwalk').textContent = moonwalking ? 'Walk normally' : 'Moonwalk'
+  $('#moonwalk').setAttribute('aria-pressed', String(moonwalking))
+  $('#invert').disabled = running || headMeta.index <= origin
+  $('#replay').disabled = running || headMeta.isHeadPresent
+
+  $('#calls').innerHTML = ['agent > pose', 'agent > x', 'world > footprints', 'world > vase'].map((address) => {
+    const [namespace, name] = address.split(' > ')
+    const state = o[namespace][name]()
+    const shownState = Array.isArray(state) ? `${state.length} prints` : String(state)
+    const counts = calls[address] ?? { proceeding: 0, inverted: 0 }
+    return `<tr><td>${address}</td><td>${shownState}</td><td>${counts.proceeding}</td><td><span class="inverted-count">${counts.inverted}</span></td></tr>`
+  }).join('')
+
+  $('#stats').innerHTML = `
+    <dt>Frames recorded</dt><dd>${meta.length}</dd>
+    <dt>Head at frame</dt><dd>${headMeta.index}${headMeta.isHeadPresent ? ' (the present)' : ''}</dd>
+    <dt>Trajectory</dt><dd>${trajectory.playing ? 'playing' : 'paused'}, ${trajectory.direction === 'rev' ? 'reversed' : 'forward'}, keyframe ${trajectory.position + 1} of ${trajectory.order.length}</dd>`
+}
+
+setInterval(render, 100)
+render()
+requestAnimationFrame(animate)
+
+// For poking at from the console
+Object.assign(globalThis, { o, head, chain })
+</script>
+</body>
+</html>

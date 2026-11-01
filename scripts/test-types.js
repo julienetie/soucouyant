@@ -29,6 +29,7 @@ const projects = {
   untyped: 'paths with no registered shape',
   register: 'a registered shape, with every strict option',
   temporal: 'temporal, storage adapters and the Next.js server binding',
+  polychrony: 'timelines, typed from a registered shape',
   bindings: 'React, Vue, Svelte and the Next.js client binding',
   angular: 'the Angular binding'
 }
@@ -36,7 +37,7 @@ const projects = {
 // Framework types set their own TypeScript minimums (Vue and Angular need
 // 5.4 or later), so the oldest supported TypeScript checks only Soucouyant's
 // own types
-const ownProjects = ['core', 'untyped', 'register', 'temporal']
+const ownProjects = ['core', 'untyped', 'register', 'temporal', 'polychrony']
 
 // Angular's own package can't be resolved with node10 resolution
 const unsupported = (project, resolution) => project === 'angular' && resolution === 'node10'

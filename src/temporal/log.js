@@ -583,6 +583,9 @@ export const setPendingAlias = (name) => {
   }
 }
 
+// Drops a pending alias another timeline has already used
+export const clearPendingAlias = () => { aliasSlot = null }
+
 const attachAlias = (name, index) => {
   const existing = framesByAlias.get(name)
   if (existing !== undefined) {

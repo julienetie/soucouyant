@@ -18,7 +18,8 @@
     "angular",
     "svelte",
     "nextjs",
-    "typescript"
+    "typescript",
+    "timelines"
   ],
   "homepage": "https://github.com/julienetie/soucouyant#readme",
   "bugs": {
@@ -44,6 +45,10 @@
     "./temporal": {
       "types": "./dist/ts/soucouyant-temporal.d.ts",
       "default": "./dist/js/soucouyant-temporal.js"
+    },
+    "./polychrony": {
+      "types": "./dist/ts/soucouyant-polychrony.d.ts",
+      "default": "./dist/js/soucouyant-polychrony.js"
     },
     "./storage-sqlite": {
       "types": "./dist/ts/storage/sqlite.d.ts",
@@ -84,6 +89,9 @@
       "temporal": [
         "./dist/ts/soucouyant-temporal.d.ts"
       ],
+      "polychrony": [
+        "./dist/ts/soucouyant-polychrony.d.ts"
+      ],
       "storage-sqlite": [
         "./dist/ts/storage/sqlite.d.ts"
       ],
@@ -116,23 +124,27 @@
   "sideEffects": [
     "./dist/js/soucouyant-core.js",
     "./dist/js/soucouyant-temporal.js",
+    "./dist/js/soucouyant-polychrony.js",
     "./dist/js/soucouyant-core.min.js",
-    "./dist/js/soucouyant-temporal.min.js"
+    "./dist/js/soucouyant-temporal.min.js",
+    "./dist/js/soucouyant-polychrony.min.js"
   ],
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "node scripts/clean-dist.js && rollup -c --silent && node scripts/format-dist.js && node scripts/build-types.js",
+    "build": "node scripts/clean-dist.js && node scripts/build-instance.js && rollup -c --silent && node scripts/format-dist.js && node scripts/build-types.js",
+    "examples": "npm run build && shx cp dist/js/soucouyant-core.js dist/js/soucouyant-temporal.js dist/js/soucouyant-polychrony.js dist/js/storage/indexeddb.js examples/ && http-server examples -p 3030 -c-1",
     "size": "node scripts/size.js",
-    "test": "npm run test:core && npm run test:temporal && npm run test:core-with-temporal",
+    "test": "npm run test:core && npm run test:temporal && npm run test:core-with-temporal && npm run test:polychrony",
     "test:core": "node --test \"test/core/*.test.js\"",
     "test:temporal": "node --test \"test/temporal/*.test.js\"",
     "test:core-with-temporal": "SOUCOUYANT_WITH_TEMPORAL=1 NODE_OPTIONS=\"$NODE_OPTIONS --import ./test/support/with-temporal.js\" node --test \"test/core/*.test.js\"",
+    "test:polychrony": "node scripts/build-instance.js && node --test \"test/polychrony/*.test.js\"",
     "test:dist": "npm run build && SOUCOUYANT_DIST=1 NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
     "test:min": "npm run build && SOUCOUYANT_DIST=min NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
     "test:types": "node scripts/test-types.js",
-    "test:natives": "node --allow-natives-syntax --expose-gc test/natives/optimization.js",
+    "test:natives": "node scripts/build-instance.js && node --allow-natives-syntax --expose-gc test/natives/optimization.js",
     "lint": "standard",
     "bench": "node --expose-gc bench/run.js",
     "prepublishOnly": "npm run test:dist && npm run test:min && npm run test:types"
@@ -170,6 +182,7 @@
     "eslint": "^8.57.1",
     "eslint-config-standard": "^17.1.0",
     "fake-indexeddb": "^6.2.7",
+    "http-server": "^14.1.1",
     "jsdom": "^30.1.3",
     "mitata": "^1.0.34",
     "mobx": "^7.1.3",
@@ -178,6 +191,7 @@
     "react-dom": "^19.3.1",
     "rollup": "^4.66.0",
     "rxjs": "^7.8.2",
+    "shx": "^0.4.0",
     "standard": "^17.1.2",
     "svelte": "^5.57.3",
     "typescript": "^7.0.2",
@@ -190,7 +204,9 @@
   "standard": {
     "ignore": [
       "archive/**",
-      "test/natives/**"
+      "test/natives/**",
+      "src/polychrony/instance.generated.js",
+      "examples/*.js"
     ]
   }
 }

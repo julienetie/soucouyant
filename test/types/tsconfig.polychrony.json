@@ -1,0 +1,1 @@
+{ "extends": "./tsconfig.base.json", "compilerOptions": { "noPropertyAccessFromIndexSignature": true }, "include": ["polychrony/**/*", "expect.ts"] }

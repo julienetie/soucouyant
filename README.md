@@ -1,4 +1,4 @@
-<img width="1296" height="830" alt="soucouyant-butterfly-yellow" src="https://github.com/user-attachments/assets/be67b61d-ac78-41ea-9064-a5f737cd2688" />
+	<img width="1296" height="830" alt="soucouyant-butterfly-yellow" src="https://github.com/user-attachments/assets/be67b61d-ac78-41ea-9064-a5f737cd2688" />
 
 # Soucouyant (Alpha)
 
@@ -21,7 +21,7 @@ Although Soucouyant is a full featured state management system, please remember 
 - **Bindings** for React, Vue, Angular, Svelte and Next.js.
 - **No framework dependency.** It runs in browsers and Node.js 22.5 and later.
 - **Two files.** `soucouyant` is the core: state, subscriptions and the mutex. `soucouyant/temporal` adds recorded history, time travel, trajectories and storage. Import temporal only if you need them.
-- **TypeScript.** Types ship with the package. Declare state with `o({ ... })` and every state is inferred, with no type written twice. See **[TS_README.md](TS_README.md)**.
+- **TypeScript.** Types ship with the package. See **[TS_README.md](TS_README.md)**.
 
 ## Install
 
@@ -40,7 +40,8 @@ The core covers most apps:
 ```js
 import { o } from 'soucouyant'
 
-o({ cart: { items: [], open: false } })
+o`cart > items`([])
+  `cart > open`(false)
 
 o.cart.items.sub((items) => render(items))
 
@@ -121,19 +122,19 @@ head.seek('present')
 
 ## Imports
 
-| Import                            | Contents                                                             |
-| --------------------------------- | -------------------------------------------------------------------- |
-| `soucouyant`                      | The core: `o`, `finite`, `value`, `mutex`, `freeze`, `pending`, `republish` |
-| `soucouyant/temporal`             | The core, plus `head`, `chain` and `alias`                           |
-| `soucouyant/storage-sqlite`       | `sqliteStorage()` for Node                                           |
-| `soucouyant/storage-indexeddb`    | `indexedDbStorage()` for browsers                                    |
-| `soucouyant/devtools`             | Not in `dist` yet; import `./src/devtools.js` from a source checkout |
-| `soucouyant/bindings/react`       | `useSoucouyant`, `useSoucouyantModel`                                |
-| `soucouyant/bindings/vue`         | `useSoucouyant`, `useSoucouyantModel`                                |
-| `soucouyant/bindings/angular`     | `injectSoucouyant`                                                   |
-| `soucouyant/bindings/svelte`      | `fromSoucouyant`, `toStore`                                          |
-| `soucouyant/bindings/next`        | `snapshot()` (server)                                                |
-| `soucouyant/bindings/next/client` | `SoucouyantState`, `useSoucouyant`, `useSoucouyantModel`             |
+| Import                            | Contents                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| `soucouyant`                      | The core: `o`, `mutex`, `freeze`, `pending`, `republish`; `finite`, `value` for TypeScript |
+| `soucouyant/temporal`             | The core, plus `head`, `chain` and `alias`                                                 |
+| `soucouyant/storage-sqlite`       | `sqliteStorage()` for Node                                                                 |
+| `soucouyant/storage-indexeddb`    | `indexedDbStorage()` for browsers                                                          |
+| `soucouyant/devtools`             | Not in `dist` yet; import `./src/devtools.js` from a source checkout                       |
+| `soucouyant/bindings/react`       | `useSoucouyant`, `useSoucouyantModel`                                                      |
+| `soucouyant/bindings/vue`         | `useSoucouyant`, `useSoucouyantModel`                                                      |
+| `soucouyant/bindings/angular`     | `injectSoucouyant`                                                                         |
+| `soucouyant/bindings/svelte`      | `fromSoucouyant`, `toStore`                                                                |
+| `soucouyant/bindings/next`        | `snapshot()` (server)                                                                      |
+| `soucouyant/bindings/next/client` | `SoucouyantState`, `useSoucouyant`, `useSoucouyantModel`                                   |
 
 ### Core and temporal
 
@@ -154,31 +155,9 @@ The Next.js server binding imports temporal itself. The storage adapters import 
 
 ## Declaring state
 
-Declare a whole object at once, or one address at a time. Both build the same tree, and both return `o`.
-
 ```js
-import { o, finite, value } from 'soucouyant'
-
-o({
-  editor: { text: '', cursor: { line: 1, column: 0 } },
-  traffic: { light: finite('red', ['red', 'green', 'amber'], { transitions: { red: ['green'], green: ['amber'], amber: ['red'] } }) },
-  account: { profile: value({ name: 'Ada' }) }
-})
-
-o`address`(state, finiteStates?, options?) // one stateObject; declarations chain
+o`address`(state, finiteStates?, options?) // returns o, so declarations chain
 ```
-
-In an object declaration:
-
-- **Plain objects are namespaces.** Everything else is a state: strings, numbers, booleans, `null`, arrays, Maps, Sets, Dates and class instances.
-- **`value(state)`** makes a plain object a state rather than a namespace.
-- **`finite(initial, states, options?)`** declares finite states, the same as the second and third arguments of a tagged declaration.
-- **`undefined`**, or no initial state, starts the stateObject `pending`.
-- **The whole object is checked before anything is declared.** A mistake anywhere (a reserved or invalid name, a function, an empty namespace, a clash with existing state) throws and declares nothing.
-
-In TypeScript, `o({ ... })` returns the declared tree with every state typed from the object. See [TS_README.md](TS_README.md).
-
-For both forms:
 
 - An address is namespaces then a stateObject name, separated by ` > `. Each part is a JavaScript identifier, and template interpolation works.
 - With no state, the initial state is `pending`.
@@ -199,6 +178,8 @@ o.colourPallet.scope('/interfaces/dashboard.js', '/pallet-selection.js')
 ```
 
 Each stateObject function has `sub`, `unsub`, `scope` and `startTime`. With temporal loaded, each also has `purge` and `trailLimit`, plus `trajectory` when it is finite.
+
+TypeScript can't read inside a tagged template, so TypeScript projects can also declare with an object, which types every state. That form is for TypeScript; see [TS_README.md](TS_README.md).
 
 V8 keeps up to 1,020 properties per object in its fast layout. In development mode a warning tells you when a namespace passes that, so you can split it.
 
@@ -464,7 +445,7 @@ The spec, as amended by the design discussion, is the reference. This implementa
 - Keyframe actions are looked up by finite index, not by function name.
 - `chain.IDBTailSliceSize()` is the method name, `trajectory.rwd()` keeps its name, and both purge variants use `'auto-stop'`.
 - New: `chain.restore`, `sub`, `unsub`, `slice`, `stateAt`, `clear`, `meta`, `replace`, `flush`; transition rules; `scope()`; `o.isolate()`; `development`, `clone`, `asyncCallbacks`, `asyncLockTimeout`, `seekTime` and `offlineStorage.adapter`.
-- New: `o({ ... })` declares a whole object of stateObjects, with `finite()` and `value()` for the leaves that need them. In TypeScript it types every state from the object.
+- New for TypeScript: object declarations, `o({ ... })` with `finite()` and `value()`, which type every state from the object (see [TS_README.md](TS_README.md)).
 - The library is two files: the core, and temporal for history, time travel, trajectories and storage. `mutex.lock(o)` and `mutex.buffer` lock and read every stateObject in the core; `mutex.lock(chain)` and `chain.buffer` are aliases for them once temporal is loaded.
 
 ## Build

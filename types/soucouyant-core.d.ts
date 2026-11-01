@@ -251,7 +251,7 @@ type ReservedName =
   | 'scope' | 'constructor' | 'hasOwnProperty' | 'isPrototypeOf' | 'propertyIsEnumerable'
   | 'toLocaleString' | 'toString' | 'valueOf' | '__proto__'
   | '__defineGetter__' | '__defineSetter__' | '__lookupGetter__' | '__lookupSetter__'
-type RootReservedName = 'config' | 'isolate' | 'name' | 'length' | 'prototype' | 'caller' | 'arguments' | 'apply' | 'call' | 'bind'
+type RootReservedName = 'config' | 'isolate' | 'head' | 'chain' | 'name' | 'length' | 'prototype' | 'caller' | 'arguments' | 'apply' | 'call' | 'bind'
 
 // Marks what o() would reject at runtime as never, so the mistake is a type
 // error on the offending key: reserved names, functions and empty namespaces.

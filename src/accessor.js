@@ -11,7 +11,9 @@ import { warn } from './environment.js'
 
 const identifierPattern = /^[A-Za-z_$][\w$]*$/
 const reservedEverywhere = new Set([...Object.getOwnPropertyNames(Object.prototype), 'scope'])
-const reservedOnRoot = new Set(['config', 'isolate', 'name', 'length', 'prototype', 'caller', 'arguments', 'apply', 'call', 'bind'])
+// head and chain are a timeline's controls (soucouyant/polychrony), and every
+// timeline shares one shape, so they are reserved on o too
+const reservedOnRoot = new Set(['config', 'isolate', 'head', 'chain', 'name', 'length', 'prototype', 'caller', 'arguments', 'apply', 'call', 'bind'])
 
 const createNamespaceMeta = (target, address, parent) => ({ target, address, parent, scopePaths: null, frozen: false, children: 0 })
 
@@ -115,6 +117,14 @@ const prepareInitial = (address, state) => {
   return state
 }
 
+// Every declaration in order, and listeners told of each new one. Timelines
+// (soucouyant/polychrony) share one shape: a new timeline replays this log,
+// and a declaration in any timeline is repeated in the others, so the same
+// stateObject has the same id everywhere. Cold path only
+export const declarationLog = []
+const declarationListeners = []
+export const onDeclared = (listener) => { declarationListeners.push(listener) }
+
 const declare = (names, state, finiteStates, options) => {
   if (names.length - 1 > settings.namespaceDepth) {
     throw new RangeError(`${names.join(' > ')} is ${names.length - 1} namespaces deep; the limit is ${settings.namespaceDepth} (o.config({ namespaceDepth }))`)
@@ -152,8 +162,14 @@ const declare = (names, state, finiteStates, options) => {
   stateObjects.push(stateObject)
   idOfStateObject.set(stateObject, id)
   defineChild(meta, name, stateObject)
+  declarationLog.push([names, state, finiteStates, options])
+  for (const listener of declarationListeners) listener(names, state, finiteStates, options)
   settleNow()
 }
+
+// Declares by address parts, for timelines repeating a declaration made
+// elsewhere. An address that already exists is left as it is
+export const declareNames = (names, state, finiteStates, options) => declare(names, state, finiteStates, options)
 
 // ---------------------------------------------------------------------------
 // Object declarations: o({ editor: { text: '' } })
@@ -269,24 +285,59 @@ Object.defineProperty(o, 'scope', {
 
 // freeze(target): no more children on the target or its namespaces above
 // it, except o itself unless o is the target
+// Frozen namespace addresses ('' for o), in order, and listeners told of each,
+// so every timeline freezes the same parts of the shared shape
+export const freezeLog = []
+const freezeListeners = []
+export const onFrozen = (listener) => { freezeListeners.push(listener) }
+
+// Set by soucouyant/polychrony: freezes a target that belongs to another
+// timeline, or returns undefined when no timeline owns it
+let foreignFreeze = null
+export const setForeignFreeze = (handler) => { foreignFreeze = handler }
+
+const freezeMeta = (meta) => {
+  if (meta === rootMeta) {
+    rootMeta.frozen = true
+    Object.preventExtensions(o)
+  } else {
+    while (meta !== null && meta !== rootMeta) {
+      meta.frozen = true
+      Object.preventExtensions(meta.target)
+      meta = meta.parent
+    }
+  }
+}
+
 export const freeze = (target) => {
   let meta = namespaceMetas.get(target)
   if (meta === undefined) {
     const id = idOfStateObject.get(target)
-    if (id === undefined) throw new TypeError('freeze() takes o, a namespace or a stateObject')
+    if (id === undefined) {
+      if (foreignFreeze !== null && foreignFreeze(target) !== undefined) return target
+      throw new TypeError('freeze() takes o, a namespace or a stateObject')
+    }
     meta = records[id].namespace ?? rootMeta
   }
-  if (meta === rootMeta) {
-    rootMeta.frozen = true
-    Object.preventExtensions(o)
-    return target
-  }
-  while (meta !== null && meta !== rootMeta) {
-    meta.frozen = true
-    Object.preventExtensions(meta.target)
-    meta = meta.parent
-  }
+  freezeMeta(meta)
+  freezeLog.push(meta.address)
+  for (const listener of freezeListeners) listener(meta.address)
   return target
+}
+
+// Freezes the namespace at an address ('' for o), for timelines repeating a
+// freeze made elsewhere
+export const freezeAddress = (address) => {
+  let meta = rootMeta
+  if (address !== '') {
+    for (const name of address.split(' > ')) {
+      const child = namespaceMetas.get(meta.target[name])
+      if (child === undefined) return
+      meta = child
+    }
+  }
+  freezeMeta(meta)
+  freezeLog.push(address)
 }
 
 export const isNamespace = (target) => namespaceMetas.has(target)
