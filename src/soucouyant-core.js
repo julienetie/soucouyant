@@ -3,5 +3,5 @@
 // on top of this module.
 
 export { pending, republish } from './constants.js'
-export { o, freeze } from './accessor.js'
+export { o, freeze, finite, value } from './accessor.js'
 export { mutex } from './mutex.js'

@@ -155,8 +155,96 @@ const declare = (names, state, finiteStates, options) => {
   settleNow()
 }
 
+// ---------------------------------------------------------------------------
+// Object declarations: o({ editor: { text: '' } })
+// ---------------------------------------------------------------------------
+
+// Markers for the leaves an object declaration can't express on its own.
+// Frozen, and recognised by a private symbol, so no state value is mistaken
+// for one
+const declarationKind = Symbol('soucouyant.declaration')
+const FINITE_DECLARATION = 1
+const VALUE_DECLARATION = 2
+
+// finite(initial, states, options): a finite stateObject in an object
+// declaration, the same as o`name`(initial, states, options)
+export const finite = (initial, states, options) => {
+  if (!Array.isArray(states) && !(states instanceof Set)) throw new TypeError('finite() takes the initial state, then the finite states as an Array or a Set')
+  return Object.freeze({ [declarationKind]: FINITE_DECLARATION, initial, states, options })
+}
+
+// value(state): a stateObject holding a plain object, which an object
+// declaration would otherwise read as a namespace
+export const value = (state) => Object.freeze({ [declarationKind]: VALUE_DECLARATION, state })
+
+const isPlainObject = (candidate) => {
+  if (candidate === null || typeof candidate !== 'object') return false
+  const prototype = Object.getPrototypeOf(candidate)
+  return prototype === Object.prototype || prototype === null
+}
+
+const kindOf = (entry) => entry !== null && typeof entry === 'object' ? entry[declarationKind] : undefined
+
+// Checked in full before anything is declared, so a mistake anywhere in the
+// object leaves no half-declared state behind. `existing` is the namespace
+// already at this path, if any
+const checkShape = (shape, names, existing) => {
+  const keys = Object.keys(shape)
+  if (keys.length === 0) {
+    throw new TypeError(names.length === 0 ? 'o() needs at least one stateObject to declare' : `${names.join(' > ')} is an empty namespace: give it at least one stateObject`)
+  }
+  const existingMeta = existing === undefined ? undefined : namespaceMetas.get(existing)
+  for (const key of keys) {
+    const path = [...names, key]
+    const address = path.join(' > ')
+    if (!identifierPattern.test(key)) throw new SyntaxError(`"${address}" is not a valid address: each name must be a JavaScript identifier`)
+    checkName(key, names.length === 0)
+    const child = existing !== undefined && Object.hasOwn(existing, key) ? existing[key] : undefined
+    if (child === undefined && existingMeta !== undefined && (existingMeta.frozen || !Object.isExtensible(existing))) {
+      throw new Error(`${existingMeta.address || 'o'} is frozen: "${key}" cannot be added`)
+    }
+    const entry = shape[key]
+    const kind = kindOf(entry)
+    if (kind === undefined && isPlainObject(entry)) {
+      if (path.length > settings.namespaceDepth) {
+        throw new RangeError(`${address} is more than ${settings.namespaceDepth} namespaces deep; the limit is ${settings.namespaceDepth} (o.config({ namespaceDepth }))`)
+      }
+      if (child !== undefined && !namespaceMetas.has(child)) throw new Error(`${address} is a stateObject, not a namespace`)
+      checkShape(entry, path, child)
+      continue
+    }
+    if (child !== undefined) {
+      if (!idOfStateObject.has(child)) throw new Error(`${address} is a namespace, not a stateObject`)
+      // Redeclaring keeps the existing stateObject and its state (hot reload)
+      continue
+    }
+    if (kind === FINITE_DECLARATION) prepareFinite(address, entry.states, prepareInitial(address, entry.initial), entry.options)
+    else prepareInitial(address, kind === VALUE_DECLARATION ? entry.state : entry)
+  }
+}
+
+const declareShape = (shape, names) => {
+  for (const key of Object.keys(shape)) {
+    const path = [...names, key]
+    const entry = shape[key]
+    const kind = kindOf(entry)
+    if (kind === FINITE_DECLARATION) declare(path, entry.initial, entry.states, entry.options)
+    else if (kind === VALUE_DECLARATION) declare(path, entry.state)
+    else if (isPlainObject(entry)) declareShape(entry, path)
+    else declare(path, entry)
+  }
+}
+
+// o`namespace > name`(state) declares one stateObject; o({ ... }) declares a
+// whole object of them. Plain objects are namespaces, finite() and value()
+// mark the leaves that need them, and anything else is a state
 export const o = (strings, ...values) => {
-  if (!Array.isArray(strings) || !Array.isArray(strings.raw)) throw new TypeError('o is a tag: declare with o`namespace > name`(state)')
+  if (isPlainObject(strings)) {
+    checkShape(strings, [], o)
+    declareShape(strings, [])
+    return o
+  }
+  if (!Array.isArray(strings) || !Array.isArray(strings.raw)) throw new TypeError('o is a tag, o`namespace > name`(state), or takes an object of states, o({ name: state })')
   const names = parseAddress(strings, values)
   return (state = pending, finiteStates, options) => {
     declare(names, state, finiteStates, options)

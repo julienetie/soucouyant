@@ -3,7 +3,7 @@
 // the built bindings import the unminified files, so a run never loads two
 // copies of the core.
 const source = new URL('../../src/', import.meta.url).href
-const dist = new URL('../../dist/', import.meta.url).href
+const dist = new URL('../../dist/js/', import.meta.url).href
 const minified = process.env.SOUCOUYANT_DIST === 'min'
 
 const libraryFiles = ['soucouyant-core.js', 'soucouyant-temporal.js']

@@ -3,7 +3,7 @@
 # Soucouyant (Alpha)
 
 [![CI](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml/badge.svg)](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml)
-[![core 8.8 kB gzip](https://img.shields.io/badge/core-8.8%20kB%20gzip-blue)](#build)
+[![core 9.3 kB gzip](https://img.shields.io/badge/core-9.3%20kB%20gzip-blue)](#build)
 [![temporal 10.9 kB gzip](https://img.shields.io/badge/temporal-10.9%20kB%20gzip-blue)](#build)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -21,6 +21,7 @@ Although Soucouyant is a full featured state management system, please remember 
 - **Bindings** for React, Vue, Angular, Svelte and Next.js.
 - **No framework dependency.** It runs in browsers and Node.js 22.5 and later.
 - **Two files.** `soucouyant` is the core: state, subscriptions and the mutex. `soucouyant/temporal` adds recorded history, time travel, trajectories and storage. Import temporal only if you need them.
+- **TypeScript.** Types ship with the package. Declare state with `o({ ... })` and every state is inferred, with no type written twice. See **[TS_README.md](TS_README.md)**.
 
 ## Install
 
@@ -28,7 +29,9 @@ Although Soucouyant is a full featured state management system, please remember 
 npm install soucouyant
 ```
 
-Or, without a bundler, load `dist/soucouyant-core.min.js` through an import map (see [Build](#build)).
+Or, without a bundler, load `dist/js/soucouyant-core.min.js` through an import map (see [Build](#build)).
+
+Using TypeScript? The types are included; [TS_README.md](TS_README.md) covers setup and typing your state.
 
 ## Quick start
 
@@ -37,8 +40,7 @@ The core covers most apps:
 ```js
 import { o } from 'soucouyant'
 
-o`cart > items`([])
-  `cart > open`(false)
+o({ cart: { items: [], open: false } })
 
 o.cart.items.sub((items) => render(items))
 
@@ -97,6 +99,7 @@ head.seek('present')
 - [Install](#install)
 - [Quick start](#quick-start)
 
+- [TypeScript](TS_README.md)
 - [Imports](#imports)
 - [Declaring state](#declaring-state)
 - [Get and publish](#get-and-publish)
@@ -120,7 +123,7 @@ head.seek('present')
 
 | Import                            | Contents                                                             |
 | --------------------------------- | -------------------------------------------------------------------- |
-| `soucouyant`                      | The core: `o`, `mutex`, `freeze`, `pending`, `republish`             |
+| `soucouyant`                      | The core: `o`, `finite`, `value`, `mutex`, `freeze`, `pending`, `republish` |
 | `soucouyant/temporal`             | The core, plus `head`, `chain` and `alias`                           |
 | `soucouyant/storage-sqlite`       | `sqliteStorage()` for Node                                           |
 | `soucouyant/storage-indexeddb`    | `indexedDbStorage()` for browsers                                    |
@@ -151,9 +154,31 @@ The Next.js server binding imports temporal itself. The storage adapters import 
 
 ## Declaring state
 
+Declare a whole object at once, or one address at a time. Both build the same tree, and both return `o`.
+
 ```js
-o`address`(state, finiteStates?, options?) // returns o, so declarations chain
+import { o, finite, value } from 'soucouyant'
+
+o({
+  editor: { text: '', cursor: { line: 1, column: 0 } },
+  traffic: { light: finite('red', ['red', 'green', 'amber'], { transitions: { red: ['green'], green: ['amber'], amber: ['red'] } }) },
+  account: { profile: value({ name: 'Ada' }) }
+})
+
+o`address`(state, finiteStates?, options?) // one stateObject; declarations chain
 ```
+
+In an object declaration:
+
+- **Plain objects are namespaces.** Everything else is a state: strings, numbers, booleans, `null`, arrays, Maps, Sets, Dates and class instances.
+- **`value(state)`** makes a plain object a state rather than a namespace.
+- **`finite(initial, states, options?)`** declares finite states, the same as the second and third arguments of a tagged declaration.
+- **`undefined`**, or no initial state, starts the stateObject `pending`.
+- **The whole object is checked before anything is declared.** A mistake anywhere (a reserved or invalid name, a function, an empty namespace, a clash with existing state) throws and declares nothing.
+
+In TypeScript, `o({ ... })` returns the declared tree with every state typed from the object. See [TS_README.md](TS_README.md).
+
+For both forms:
 
 - An address is namespaces then a stateObject name, separated by ` > `. Each part is a JavaScript identifier, and template interpolation works.
 - With no state, the initial state is `pending`.
@@ -173,7 +198,7 @@ freeze(o)               // no new top-level namespaces
 o.colourPallet.scope('/interfaces/dashboard.js', '/pallet-selection.js')
 ```
 
-Each stateObject function has `sub`, `unsub`, `scope`, `purge`, `startTime` and `trailLimit`, plus `trajectory` when it is finite.
+Each stateObject function has `sub`, `unsub`, `scope` and `startTime`. With temporal loaded, each also has `purge` and `trailLimit`, plus `trajectory` when it is finite.
 
 V8 keeps up to 1,020 properties per object in its fast layout. In development mode a warning tells you when a namespace passes that, so you can split it.
 
@@ -439,27 +464,32 @@ The spec, as amended by the design discussion, is the reference. This implementa
 - Keyframe actions are looked up by finite index, not by function name.
 - `chain.IDBTailSliceSize()` is the method name, `trajectory.rwd()` keeps its name, and both purge variants use `'auto-stop'`.
 - New: `chain.restore`, `sub`, `unsub`, `slice`, `stateAt`, `clear`, `meta`, `replace`, `flush`; transition rules; `scope()`; `o.isolate()`; `development`, `clone`, `asyncCallbacks`, `asyncLockTimeout`, `seekTime` and `offlineStorage.adapter`.
+- New: `o({ ... })` declares a whole object of stateObjects, with `finite()` and `value()` for the leaves that need them. In TypeScript it types every state from the object.
 - The library is two files: the core, and temporal for history, time travel, trajectories and storage. `mutex.lock(o)` and `mutex.buffer` lock and read every stateObject in the core; `mutex.lock(chain)` and `chain.buffer` are aliases for them once temporal is loaded.
 
 ## Build
 
-`npm run build` writes one plain ES module per entry point, readable and in StandardJS style, plus minified copies of the two library files:
+`npm run build` writes JavaScript to `dist/js` and TypeScript declarations to `dist/ts`. The JavaScript is one plain ES module per entry point, readable and in StandardJS style, plus minified copies of the two library files:
 
 ```
-dist/soucouyant-core.js         the core: import maps, browsers and Node
-dist/soucouyant-temporal.js     history; imports ./soucouyant-core.js
-dist/soucouyant-core.min.js     minified core
-dist/soucouyant-temporal.min.js minified temporal; imports ./soucouyant-core.min.js
-dist/bindings/<framework>.js    react, vue, angular, svelte, next, next-client
-dist/storage/sqlite.js          plus sqlite-worker.js, loaded beside it
-dist/storage/indexeddb.js
+dist/js/soucouyant-core.js          the core: import maps, browsers and Node
+dist/js/soucouyant-temporal.js      history; imports ./soucouyant-core.js
+dist/js/soucouyant-core.min.js      minified core
+dist/js/soucouyant-temporal.min.js  minified temporal; imports ./soucouyant-core.min.js
+dist/js/bindings/<framework>.js     react, vue, angular, svelte, next, next-client
+dist/js/storage/sqlite.js           plus sqlite-worker.js, loaded beside it
+dist/js/storage/indexeddb.js
+
+dist/ts/                            a .d.ts file for each entry point above
 ```
+
+The declarations are written by hand in `types/` and copied to `dist/ts`. `package.json` points every import at both, `"types"` for TypeScript and `"default"` for everything else, so neither TypeScript nor JavaScript users ever write `dist` in an import.
 
 | File | Size | gzip | Brotli |
 | --- | --- | --- | --- |
-| `soucouyant-core.js` | 58.2 KB | 15.4 KB | 13.4 KB |
-| `soucouyant-core.min.js` | 23.8 KB | 8.8 KB | 7.9 KB |
-| `soucouyant-temporal.js` | 77.7 KB | 18.2 KB | 15.8 KB |
+| `soucouyant-core.js` | 63.1 KB | 16.7 KB | 14.4 KB |
+| `soucouyant-core.min.js` | 25.6 KB | 9.3 KB | 8.3 KB |
+| `soucouyant-temporal.js` | 77.7 KB | 18.1 KB | 15.8 KB |
 | `soucouyant-temporal.min.js` | 30.0 KB | 10.9 KB | 9.8 KB |
 
 Each file bundles everything it needs except three kinds of import, which stay imports so an app always has exactly one of each: the framework (`react`, `vue`, `@angular/core`, `svelte/reactivity`), Node built-ins (`node:`), and Soucouyant itself, which bindings import as `../soucouyant-core.js` (the Next.js server binding as `../soucouyant-temporal.js`). There is no module wrapper or runtime helper code. Rollup merges the modules into one scope, keeping their comments, and `scripts/format-dist.js` puts the output in StandardJS style. It runs ESLint with the Standard config directly, because `standard` skips anything in `.gitignore`, which includes `dist/`.
@@ -476,15 +506,15 @@ In a browser with an import map:
 <script type="importmap">
   {
     "imports": {
-      "soucouyant": "/dist/soucouyant-core.min.js",
-      "soucouyant/temporal": "/dist/soucouyant-temporal.min.js",
+      "soucouyant": "/dist/js/soucouyant-core.min.js",
+      "soucouyant/temporal": "/dist/js/soucouyant-temporal.min.js",
       "react": "https://esm.sh/react@19"
     }
   }
 </script>
 <script type="module">
   import { o, head } from 'soucouyant/temporal'
-  import { useSoucouyant } from '/dist/bindings/react.js'
+  import { useSoucouyant } from '/dist/js/bindings/react.js'
 </script>
 ```
 
@@ -494,7 +524,7 @@ Temporal loads the core by relative URL, so it resolves to the same file as the 
 
 ```sh
 npm install
-npm run build            # ./dist
+npm run build            # ./dist/js and ./dist/ts
 npm run size             # file sizes, and a check against the gzip budgets
 npm test                 # all three runs below, against ./src
 npm run test:core        # test/core: the core alone, temporal never loaded
@@ -502,6 +532,7 @@ npm run test:temporal    # test/temporal: history, chain, trajectories, storage,
 npm run test:core-with-temporal  # test/core again, with temporal preloaded
 npm run test:dist        # build, then all three runs against ./dist
 npm run test:min         # build, then all three runs against the .min.js pair
+npm run test:types       # compile test/types against dist/ts with TypeScript 5.0, 5.9 and 7
 npm run test:natives     # V8 optimization, fast-properties and allocation checks
 npm run lint             # StandardJS
 npm run bench            # all benchmark groups; npm run bench -- notify for one

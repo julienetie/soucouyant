@@ -1,4 +1,4 @@
-// Puts ./dist in StandardJS style. `standard` skips anything in .gitignore,
+// Puts ./dist/js in StandardJS style. `standard` skips anything in .gitignore,
 // and ./dist is ignored, so this runs ESLint with the same config directly.
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -12,9 +12,9 @@ const eslint = new ESLint({
 })
 
 // The .min.js files are left exactly as Terser wrote them
-const files = (await readdir('dist', { recursive: true }))
+const files = (await readdir('dist/js', { recursive: true }))
   .filter((path) => path.endsWith('.js') && !path.endsWith('.min.js'))
-  .map((path) => join('dist', path))
+  .map((path) => join('dist/js', path))
 const results = await eslint.lintFiles(files)
 await ESLint.outputFixes(results)
 

@@ -11,7 +11,7 @@ o.config({ execution: 'sync' })
 // The built core file also exports the internal bindings temporal imports,
 // so check for the public API and the absence of the history API
 test('core exports the public API and no history API', { skip }, () => {
-  for (const name of ['freeze', 'mutex', 'o', 'pending', 'republish']) assert.ok(name in core, name)
+  for (const name of ['finite', 'freeze', 'mutex', 'o', 'pending', 'republish', 'value']) assert.ok(name in core, name)
   for (const name of ['head', 'chain', 'alias']) assert.ok(!(name in core), name)
 })
 

@@ -17,7 +17,8 @@
     "vue",
     "angular",
     "svelte",
-    "nextjs"
+    "nextjs",
+    "typescript"
   ],
   "homepage": "https://github.com/julienetie/soucouyant#readme",
   "bugs": {
@@ -33,33 +34,96 @@
   },
   "license": "MIT",
   "type": "module",
-  "main": "./dist/soucouyant-core.js",
+  "main": "./dist/js/soucouyant-core.js",
+  "types": "./dist/ts/soucouyant-core.d.ts",
   "exports": {
-    ".": "./dist/soucouyant-core.js",
-    "./temporal": "./dist/soucouyant-temporal.js",
-    "./storage-sqlite": "./dist/storage/sqlite.js",
-    "./storage-indexeddb": "./dist/storage/indexeddb.js",
-    "./bindings/react": "./dist/bindings/react.js",
-    "./bindings/vue": "./dist/bindings/vue.js",
-    "./bindings/angular": "./dist/bindings/angular.js",
-    "./bindings/svelte": "./dist/bindings/svelte.js",
-    "./bindings/next": "./dist/bindings/next.js",
-    "./bindings/next/client": "./dist/bindings/next-client.js"
+    ".": {
+      "types": "./dist/ts/soucouyant-core.d.ts",
+      "default": "./dist/js/soucouyant-core.js"
+    },
+    "./temporal": {
+      "types": "./dist/ts/soucouyant-temporal.d.ts",
+      "default": "./dist/js/soucouyant-temporal.js"
+    },
+    "./storage-sqlite": {
+      "types": "./dist/ts/storage/sqlite.d.ts",
+      "default": "./dist/js/storage/sqlite.js"
+    },
+    "./storage-indexeddb": {
+      "types": "./dist/ts/storage/indexeddb.d.ts",
+      "default": "./dist/js/storage/indexeddb.js"
+    },
+    "./bindings/react": {
+      "types": "./dist/ts/bindings/react.d.ts",
+      "default": "./dist/js/bindings/react.js"
+    },
+    "./bindings/vue": {
+      "types": "./dist/ts/bindings/vue.d.ts",
+      "default": "./dist/js/bindings/vue.js"
+    },
+    "./bindings/angular": {
+      "types": "./dist/ts/bindings/angular.d.ts",
+      "default": "./dist/js/bindings/angular.js"
+    },
+    "./bindings/svelte": {
+      "types": "./dist/ts/bindings/svelte.d.ts",
+      "default": "./dist/js/bindings/svelte.js"
+    },
+    "./bindings/next": {
+      "types": "./dist/ts/bindings/next.d.ts",
+      "default": "./dist/js/bindings/next.js"
+    },
+    "./bindings/next/client": {
+      "types": "./dist/ts/bindings/next-client.d.ts",
+      "default": "./dist/js/bindings/next-client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "temporal": [
+        "./dist/ts/soucouyant-temporal.d.ts"
+      ],
+      "storage-sqlite": [
+        "./dist/ts/storage/sqlite.d.ts"
+      ],
+      "storage-indexeddb": [
+        "./dist/ts/storage/indexeddb.d.ts"
+      ],
+      "bindings/react": [
+        "./dist/ts/bindings/react.d.ts"
+      ],
+      "bindings/vue": [
+        "./dist/ts/bindings/vue.d.ts"
+      ],
+      "bindings/angular": [
+        "./dist/ts/bindings/angular.d.ts"
+      ],
+      "bindings/svelte": [
+        "./dist/ts/bindings/svelte.d.ts"
+      ],
+      "bindings/next": [
+        "./dist/ts/bindings/next.d.ts"
+      ],
+      "bindings/next/client": [
+        "./dist/ts/bindings/next-client.d.ts"
+      ]
+    }
   },
   "files": [
     "dist"
   ],
   "sideEffects": [
-    "./dist/soucouyant-core.js",
-    "./dist/soucouyant-temporal.js",
-    "./dist/soucouyant-core.min.js",
-    "./dist/soucouyant-temporal.min.js"
+    "./dist/js/soucouyant-core.js",
+    "./dist/js/soucouyant-temporal.js",
+    "./dist/js/soucouyant-core.min.js",
+    "./dist/js/soucouyant-temporal.min.js"
   ],
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "rollup -c --silent && node scripts/format-dist.js",
+    "build": "node scripts/clean-dist.js && rollup -c --silent && node scripts/format-dist.js && node scripts/build-types.js",
     "size": "node scripts/size.js",
     "test": "npm run test:core && npm run test:temporal && npm run test:core-with-temporal",
     "test:core": "node --test \"test/core/*.test.js\"",
@@ -67,10 +131,11 @@
     "test:core-with-temporal": "SOUCOUYANT_WITH_TEMPORAL=1 NODE_OPTIONS=\"$NODE_OPTIONS --import ./test/support/with-temporal.js\" node --test \"test/core/*.test.js\"",
     "test:dist": "npm run build && SOUCOUYANT_DIST=1 NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
     "test:min": "npm run build && SOUCOUYANT_DIST=min NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
+    "test:types": "node scripts/test-types.js",
     "test:natives": "node --allow-natives-syntax --expose-gc test/natives/optimization.js",
     "lint": "standard",
     "bench": "node --expose-gc bench/run.js",
-    "prepublishOnly": "npm run test:dist && npm run test:min"
+    "prepublishOnly": "npm run test:dist && npm run test:min && npm run test:types"
   },
   "peerDependencies": {
     "@angular/core": ">=21",
@@ -101,6 +166,7 @@
     "@legendapp/state": "^2.1.15",
     "@reduxjs/toolkit": "^2.13.0",
     "@rollup/plugin-terser": "^1.0.2",
+    "@types/react": "^19.3.0",
     "eslint": "^8.57.1",
     "eslint-config-standard": "^17.1.0",
     "fake-indexeddb": "^6.2.7",
@@ -114,6 +180,9 @@
     "rxjs": "^7.8.2",
     "standard": "^17.1.2",
     "svelte": "^5.57.3",
+    "typescript": "^7.0.2",
+    "typescript5": "npm:typescript@^5.0.4",
+    "typescript59": "npm:typescript@~5.9.3",
     "vue": "3.5",
     "xstate": "^5.33.3",
     "zustand": "^5.0.16"

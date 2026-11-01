@@ -1,4 +1,5 @@
-// npm run build: plain ES modules, one per entry point.
+// npm run build: plain ES modules, one per entry point, in ./dist/js. The
+// type declarations in ./types are copied to ./dist/ts by scripts/build-types.js.
 //
 // soucouyant-core.js and soucouyant-temporal.js are built together. Temporal
 // imports core, so every module they share lands in soucouyant-core.js and
@@ -31,7 +32,7 @@ const library = {
   preserveEntrySignatures: 'allow-extension',
   output: [
     {
-      dir: 'dist',
+      dir: 'dist/js',
       format: 'es',
       entryFileNames: '[name].js',
       // Keep real names on the bindings temporal imports from core
@@ -40,7 +41,7 @@ const library = {
     {
       // soucouyant-core.min.js and soucouyant-temporal.min.js: temporal.min
       // imports core.min, so the pair still shares one copy of the core
-      dir: 'dist',
+      dir: 'dist/js',
       format: 'es',
       entryFileNames: '[name].min.js',
       // The bindings temporal imports from core get short names; the public
@@ -67,7 +68,7 @@ const entry = (input, file, extra = {}) => ({
   external: isExternal,
   onwarn,
   output: {
-    file: `dist/${file}`,
+    file: `dist/js/${file}`,
     format: 'es',
     paths: { [core]: '../soucouyant-core.js', [temporal]: '../soucouyant-temporal.js' },
     ...extra

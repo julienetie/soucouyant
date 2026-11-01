@@ -1,4 +1,4 @@
-// npm run size: prints the size of each library file in ./dist, raw, gzip
+// npm run size: prints the size of each library file in ./dist/js, raw, gzip
 // and Brotli, and fails when a minified file grows past its gzip budget.
 // Run npm run build first.
 import { readFile } from 'node:fs/promises'
@@ -23,7 +23,7 @@ const kilobytes = (bytes) => `${(bytes / 1000).toFixed(1)} kB`
 let overBudget = false
 const rows = []
 for (const file of files) {
-  const code = await readFile(new URL(`../dist/${file}`, import.meta.url))
+  const code = await readFile(new URL(`../dist/js/${file}`, import.meta.url))
   const gzip = gzipSync(code).length
   const budget = budgets[file]
   const status = budget === undefined ? '' : gzip > budget ? `over budget (${kilobytes(budget)})` : `budget ${kilobytes(budget)}`

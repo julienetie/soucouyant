@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "TypeScript tests for the published types. scripts/test-types.js links node_modules/soucouyant to the repository and compiles each project."
+}
