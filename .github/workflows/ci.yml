@@ -26,4 +26,6 @@ jobs:
       - run: npm run test:dist
       - run: npm run test:min
       - run: npm run size
+      # The declarations, against the build, with TypeScript 5.0, 5.9 and 7
+      - run: npm run test:types
       - run: npm run test:natives
