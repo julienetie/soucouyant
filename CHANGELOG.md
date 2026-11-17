@@ -4,6 +4,17 @@ All notable changes are listed here. Soucouyant follows [semantic versioning](ht
 
 ## Unreleased
 
+### Changed
+
+- The examples moved to `examples/browser`. Each page's script is now its own commented `.js` file, with the same app in TypeScript beside it as a `.ts` file. `npm run test:types` type-checks the TypeScript versions, and `npm run examples` copies the `.d.ts` declarations next to the library files.
+
+### Fixed
+
+- **TypeScript:** registering a shape no longer fails as a circular type when `o` is used before the shape in the same file, such as calling `o.config()` first. TypeScript checks every call statement like `o.config()` for an assertion function, which meant working out the whole type of `o`, including the shape declared further down. The declarations now avoid that check. Nothing changes at runtime or in how `o` is typed.
+- The type declarations said timestamps and `startTime()` count from `performance.timeOrigin`. They count from the Unix epoch, like `Date.now()`.
+
+## 0.4.0
+
 ### Added
 
 - **Timelines,** in `soucouyant/polychrony`. `chain.create(name)` branches a new timeline off the current one: it starts with the parent's states and recorded history, then moves independently, with its own subscribers, locks, settings, storage and head. Timelines share one shape. `chain.get()`, `chain.list()` and `delete()` manage them, and polychrony's `alias()` works on every timeline. Each timeline runs its own copy of the engine, so the main timeline's code and speed are unchanged.

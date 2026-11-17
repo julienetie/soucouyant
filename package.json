@@ -1,6 +1,6 @@
 {
   "name": "soucouyant",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Fast JavaScript state management in two weights: a small core, and temporal for undo/redo history, time travel and trajectories.",
   "keywords": [
     "state",
@@ -134,7 +134,8 @@
   },
   "scripts": {
     "build": "node scripts/clean-dist.js && node scripts/build-instance.js && rollup -c --silent && node scripts/format-dist.js && node scripts/build-types.js",
-    "examples": "npm run build && shx cp dist/js/soucouyant-core.js dist/js/soucouyant-temporal.js dist/js/soucouyant-polychrony.js dist/js/storage/indexeddb.js examples/ && http-server examples -p 3030 -c-1",
+    "examples": "npm run build && npm run examples:copy && http-server examples -p 3030 -c-1",
+    "examples:copy": "shx mkdir -p examples/storage && shx cp dist/js/soucouyant-core.js dist/js/soucouyant-temporal.js dist/js/soucouyant-polychrony.js dist/ts/soucouyant-core.d.ts dist/ts/soucouyant-temporal.d.ts dist/ts/soucouyant-polychrony.d.ts examples/ && shx cp dist/js/storage/indexeddb.js dist/ts/storage/indexeddb.d.ts examples/storage/",
     "size": "node scripts/size.js",
     "test": "npm run test:core && npm run test:temporal && npm run test:core-with-temporal && npm run test:polychrony",
     "test:core": "node --test \"test/core/*.test.js\"",
@@ -143,7 +144,7 @@
     "test:polychrony": "node scripts/build-instance.js && node --test \"test/polychrony/*.test.js\"",
     "test:dist": "npm run build && SOUCOUYANT_DIST=1 NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
     "test:min": "npm run build && SOUCOUYANT_DIST=min NODE_OPTIONS=\"--import ./test/support/dist-loader.js\" npm test",
-    "test:types": "node scripts/test-types.js",
+    "test:types": "npm run examples:copy && node scripts/test-types.js",
     "test:natives": "node scripts/build-instance.js && node --allow-natives-syntax --expose-gc test/natives/optimization.js",
     "lint": "standard",
     "bench": "node --expose-gc bench/run.js",
@@ -206,7 +207,9 @@
       "archive/**",
       "test/natives/**",
       "src/polychrony/instance.generated.js",
-      "examples/*.js"
+      "examples/*.js",
+      "examples/storage/**",
+      "examples/browser/*.js"
     ]
   }
 }

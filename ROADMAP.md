@@ -13,4 +13,4 @@ Ideas under consideration. Nothing here is promised or scheduled; each item need
 
 ## Examples
 
-- Examples beyond `examples/browser-js`: framework bindings, Node.js and TypeScript.
+- Examples beyond `examples/browser`: framework bindings, Node.js and TypeScript.

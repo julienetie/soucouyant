@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pepperpot Pantry · Soucouyant shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+/*
+  Pepperpot Pantry: a Caribbean larder shop built on the Soucouyant core
+  alone (no temporal, no history).
+
+  Seafoam walls, deep green ink, and the colours of what's on the shelves:
+  hibiscus for anything that needs your attention (prices, the basket),
+  mango for highlights, palm green for "done". Young Serif gives the shop
+  its hand-lettered label feel; Instrument Sans does the reading.
+*/
+:root {
+  --seafoam: #eef6f3;     /* page */
+  --shelf: #ffffff;       /* cards, basket */
+  --ink: #1d2b26;         /* text */
+  --muted: #5f716a;       /* secondary text */
+  --rule: #d3e3dc;        /* borders */
+  --hibiscus: #c2185b;    /* prices, primary buttons, badges */
+  --mango: #f2a33a;       /* highlights */
+  --palm: #2e7d5b;        /* success, active filters */
+  --wash: #e2efe9;        /* subtle fills */
+  --radius: 12px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--seafoam);
+  color: var(--ink);
+  font: 16px/1.5 'Instrument Sans', system-ui, sans-serif;
+}
+
+button, input { font: inherit; color: inherit; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  background: var(--shelf);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--hibiscus);
+  outline-offset: 2px;
+}
+
+.primary { background: var(--hibiscus); border-color: var(--hibiscus); color: #fff; font-weight: 600; }
+
+input[type="text"], input[type="email"], input[type="search"] {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--shelf);
+}
+
+h1, h2, h3 { font-family: 'Young Serif', Georgia, serif; font-weight: 400; margin: 0; }
+
+/* ---- Header ------------------------------------------------------------- */
+
+.masthead {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 24px 8px;
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 340px);
+  gap: 24px;
+  align-items: end;
+}
+
+.masthead h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.01em; }
+.masthead p { margin: 8px 0 0; color: var(--muted); max-width: 52ch; }
+
+/* ---- Layout: shelves | basket ------------------------------------------ */
+
+.shop {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 16px 24px 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 28px;
+  align-items: start;
+}
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filters button[aria-pressed="true"] { background: var(--palm); border-color: var(--palm); color: #fff; }
+
+.shelves {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
+}
+
+.product {
+  background: var(--shelf);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.product .art {
+  height: 150px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.product .art svg { height: 128px; }
+.product h3 { font-size: 18px; line-height: 1.2; }
+.product .origin { color: var(--muted); font-size: 14px; }
+.product .buy { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+.price { color: var(--hibiscus); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Skeleton shelves while the catalogue is still `pending` */
+.product.loading .art, .product.loading .bar { background: var(--wash); }
+.product.loading .bar { height: 14px; border-radius: 4px; }
+.product.loading .bar.short { width: 50%; }
+@media (prefers-reduced-motion: no-preference) {
+  .product.loading { animation: breathe 1.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: 0.55; } }
+}
+
+.empty { color: var(--muted); padding: 40px 0; }
+
+/* ---- Basket ------------------------------------------------------------- */
+
+.basket {
+  position: sticky;
+  top: 16px;
+  background: var(--shelf);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+
+.basket h2 { font-size: 24px; display: flex; justify-content: space-between; align-items: baseline; }
+.basket h2 small { font-family: 'Instrument Sans', sans-serif; font-size: 14px; color: var(--muted); }
+
+.lines { list-style: none; margin: 14px 0; padding: 0; }
+
+.line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--wash);
+  border-radius: 6px;
+}
+
+.line .name { font-size: 15px; line-height: 1.25; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 28px; height: 28px; padding: 0; }
+.stepper output { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* props.rev tells the subscriber which lines changed; those flash mango */
+@media (prefers-reduced-motion: no-preference) {
+  .line.changed { animation: changed 0.9s ease-out; }
+  @keyframes changed { from { background: color-mix(in srgb, var(--mango) 45%, transparent); } }
+}
+
+/* While payment is in progress the basket is locked by the mutex */
+.basket.locked .lines { opacity: 0.6; }
+.waiting { font-size: 14px; background: color-mix(in srgb, var(--mango) 22%, transparent); padding: 8px 10px; border-radius: 8px; margin: 0 0 12px; }
+
+.totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 0; font-variant-numeric: tabular-nums; }
+.totals .grand { font-weight: 600; font-size: 18px; padding-top: 6px; border-top: 1px solid var(--rule); margin-top: 6px; }
+.totals .grand:last-child { color: var(--hibiscus); }
+
+.field { display: flex; gap: 6px; margin-top: 12px; }
+.field-note { font-size: 13px; color: var(--muted); margin: 4px 0 0; min-height: 1.5em; }
+.field-note.good { color: var(--palm); }
+.field-note.bad { color: var(--hibiscus); }
+
+.checkout-button { width: 100%; margin-top: 16px; padding: 10px; font-size: 17px; }
+
+/* ---- Checkout ----------------------------------------------------------
+   It takes the place of the shelves rather than covering the page, so the
+   basket stays usable while a payment is in progress: that's when the
+   mutex buffer has something to show */
+
+.checkout-card {
+  max-width: 520px;
+  background: var(--shelf);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.aisle.checking-out .filters, .aisle.checking-out .shelves { display: none; }
+
+.checkout-card h2 { font-size: 26px; margin-bottom: 4px; }
+.checkout-card label { display: block; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.checkout-card .actions { display: flex; justify-content: space-between; margin-top: 20px; gap: 8px; }
+.progress { display: flex; gap: 6px; margin-bottom: 18px; }
+.progress span { flex: 1; height: 4px; border-radius: 2px; background: var(--wash); }
+.progress span.done { background: var(--palm); }
+.receipt { list-style: none; padding: 0; margin: 12px 0; }
+.receipt li { display: flex; justify-content: space-between; border-bottom: 1px solid var(--wash); padding: 4px 0; }
+
+/* ---- Toast -------------------------------------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+}
+
+.toast[hidden] { display: none; }
+
+/* ---- Under the hood ----------------------------------------------------- */
+
+.hood {
+  max-width: 1280px;
+  margin: 0 auto 40px;
+  padding: 0 24px;
+}
+
+.hood > details { background: var(--shelf); border-radius: var(--radius); padding: 18px; }
+.hood summary { cursor: pointer; font-family: 'Young Serif', serif; font-size: 22px; }
+.hood-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 16px; }
+.hood h3 { font-size: 17px; margin-bottom: 8px; }
+.hood pre { margin: 0; font-size: 12px; line-height: 1.45; background: var(--seafoam); padding: 12px; border-radius: 8px; white-space: pre-wrap; max-height: 320px; overflow-y: auto; }
+.tries { display: flex; flex-direction: column; gap: 8px; }
+.tries button { text-align: left; border-radius: 8px; }
+.tries p { margin: 0 0 4px; font-size: 14px; color: var(--muted); }
+.messages { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 240px; overflow-y: auto; }
+.messages li { padding: 6px 8px; border-left: 3px solid var(--mango); background: var(--seafoam); margin-bottom: 6px; border-radius: 0 6px 6px 0; }
+.messages li.error { border-color: var(--hibiscus); }
+.counters { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.counters dt { color: var(--muted); }
+.counters dd { margin: 0; }
+.switch { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; }
+
+@media (max-width: 900px) {
+  .masthead, .shop { grid-template-columns: 1fr; }
+  .basket { position: static; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>Pepperpot Pantry</h1>
+    <p>Pepper sauces, preserves, spices and cordials from Caribbean kitchens, packed in small batches.</p>
+  </div>
+  <input type="search" id="search" placeholder="Search the shelves" aria-label="Search the shelves">
+</header>
+
+<main class="shop">
+  <section class="aisle" id="aisle" aria-label="Products">
+    <div class="filters" id="filters" role="group" aria-label="Filter by shelf"></div>
+    <div class="shelves" id="shelves"></div>
+    <!-- Checkout: its content follows the finite state o.checkout.step -->
+    <div class="checkout-card" id="checkout-card" aria-labelledby="checkout-title" hidden></div>
+  </section>
+
+  <aside class="basket" id="basket" aria-label="Basket">
+    <h2>Basket <small id="basket-count">Empty</small></h2>
+    <p class="waiting" id="waiting" hidden></p>
+    <ul class="lines" id="lines"></ul>
+
+    <form class="field" id="discount-form">
+      <input type="text" id="discount-code" placeholder="Discount code" aria-label="Discount code" autocomplete="off">
+      <button>Apply</button>
+    </form>
+    <p class="field-note" id="discount-note">Try MANGO, SOUCOUYANT, or SLOWPOKE.</p>
+
+    <div class="field">
+      <input type="text" id="tip" inputmode="decimal" placeholder="Tip for the growers (£)" aria-label="Tip for the growers in pounds">
+    </div>
+    <p class="field-note" id="tip-note"></p>
+
+    <div class="totals" id="totals"></div>
+    <button class="primary checkout-button" id="checkout-button" disabled>Checkout</button>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<section class="hood">
+  <details id="hood">
+    <summary>Under the hood</summary>
+    <div class="hood-grid">
+      <div>
+        <h3>State right now</h3>
+        <pre id="state-view"></pre>
+      </div>
+      <div>
+        <h3>Notifications</h3>
+        <dl class="counters" id="counters"></dl>
+        <label class="switch"><input type="checkbox" id="activity-switch"> Log basket changes (a named subscription)</label>
+        <pre id="activity" hidden></pre>
+      </div>
+      <div>
+        <h3>Try it</h3>
+        <div class="tries">
+          <p>Each of these breaks a rule on purpose. Soucouyant's answer appears below.</p>
+          <button id="try-add-ten">Add 10 jars of pepper sauce in one go</button>
+          <button id="try-mutate">Change the basket object directly</button>
+          <button id="try-illegal">Jump checkout from "browsing" to "paid"</button>
+          <button id="try-declare">Declare a new namespace after freeze(o)</button>
+          <button id="try-shelf">Choose a shelf that doesn't exist</button>
+        </div>
+      </div>
+      <div>
+        <h3>Messages from Soucouyant</h3>
+        <ul class="messages" id="messages"><li>None yet.</li></ul>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- The script, with comments. shop.ts is the same app in TypeScript -->
+<script type="module" src="shop.js"></script>
+</body>
+</html>

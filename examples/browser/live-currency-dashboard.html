@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scenario desk · Soucouyant live currency dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/*
+  Scenario desk: live exchange rates, plus what-if scenarios that branch off
+  them and run side by side. Each scenario is a Soucouyant timeline.
+
+  A ledger look: cool grey-blue paper, dark ink, figures set in tabular
+  numerals so columns of rates line up as they tick. Green and red mean up
+  and down and nothing else. Each timeline gets one hue of its own, used for
+  its lane on the branch map and the edge of its desk, so you can follow a
+  scenario from the map to its numbers.
+*/
+:root {
+  --paper: #edf0f4;       /* page */
+  --sheet: #ffffff;       /* desks and panels */
+  --ink: #14202e;         /* text, the live timeline's hue */
+  --muted: #5e6b7c;       /* secondary text */
+  --rule: #d7dde5;        /* borders and grid lines */
+  --up: #1f8a5b;          /* a rate rose */
+  --down: #c8372d;        /* a rate fell */
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 15px/1.45 'IBM Plex Sans', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+button, select {
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  background: var(--sheet);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+input[type="text"], input[type="number"] {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--sheet);
+}
+
+.page { max-width: 1380px; margin: 0 auto; padding: 24px; }
+
+/* ---- Header ------------------------------------------------------------- */
+
+header { display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.01em; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
+.session { font-size: 14px; color: var(--muted); }
+.session b { color: var(--ink); font-weight: 600; }
+
+/* ---- Branch map: every timeline as a lane, branching where it began ----- */
+
+.map {
+  margin-top: 20px;
+  background: var(--sheet);
+  border-radius: var(--radius);
+  padding: 14px 16px 10px;
+}
+
+.map-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+.map-head b { color: var(--ink); font-weight: 600; }
+.map svg { display: block; width: 100%; margin-top: 8px; cursor: crosshair; }
+.map .lane-label { font-size: 12px; font-weight: 500; }
+.map .axis { font-size: 11px; fill: var(--muted); }
+
+/* ---- New scenario form -------------------------------------------------- */
+
+.composer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+
+.composer label { color: var(--muted); font-size: 14px; }
+.composer .primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.composer .hint { color: var(--muted); font-size: 13px; }
+
+/* ---- Desks: one per timeline -------------------------------------------- */
+
+.desks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 600px), 1fr));
+  gap: 16px;
+}
+
+.desk {
+  background: var(--sheet);
+  border-radius: var(--radius);
+  border-top: 4px solid var(--hue);
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.desk-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; flex-wrap: wrap; }
+.desk-head h2 { margin: 0; font-size: 18px; font-weight: 600; }
+.desk-head .origin { color: var(--muted); font-size: 13px; }
+
+.regime { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.regime button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 13px; }
+.regime button + button { border-left: 1px solid var(--rule); }
+.regime button[aria-pressed="true"] { background: var(--hue); color: #fff; }
+
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+
+.tile {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 8px 10px 6px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+}
+
+.tile .pair { font-size: 13px; color: var(--muted); }
+.tile .change { font-size: 12px; text-align: right; }
+.tile .rate { font-size: 20px; font-weight: 500; grid-column: 1 / -1; letter-spacing: -0.01em; }
+.tile svg { grid-column: 1 / -1; width: 100%; height: 34px; }
+.tile .vs-live { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+
+/* Viewing the past: a dashed edge on the tiles says these aren't live */
+.desk.in-the-past .tile { border-style: dashed; }
+
+.travel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.travel .track { position: relative; }
+.travel input { width: 100%; accent-color: var(--hue); margin: 0; }
+.travel .branch-tick { position: absolute; top: -4px; width: 2px; height: 8px; background: var(--hue); pointer-events: none; }
+.travel .where { font-size: 13px; color: var(--muted); grid-column: 1; }
+.travel button { grid-row: 1 / span 2; grid-column: 2; }
+
+.marks { display: flex; flex-wrap: wrap; gap: 6px; }
+.marks button { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+
+.desk-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.desk-actions .shock { display: flex; gap: 6px; align-items: center; }
+.desk-actions input[type="number"] { width: 76px; }
+.desk-actions .spacer { flex: 1; }
+.past-note { font-size: 13px; color: var(--muted); }
+
+/* ---- Under the hood ----------------------------------------------------- */
+
+.hood { margin-top: 20px; background: var(--sheet); border-radius: var(--radius); padding: 14px 16px; }
+.hood summary { cursor: pointer; font-weight: 600; font-size: 17px; }
+.hood-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; margin-top: 12px; }
+.hood .table-scroll { overflow-x: auto; }
+.hood table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hood th { text-align: left; color: var(--muted); font-weight: 500; }
+.hood th, .hood td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--rule); }
+.hood td:first-child { font-weight: 500; }
+.hood pre { margin: 0; font-size: 12px; background: var(--paper); padding: 10px; border-radius: 6px; white-space: pre-wrap; }
+.hood .list-call { font-size: 13px; margin: 10px 0; }
+.messages { list-style: none; padding: 0; margin: 10px 0 0; font-size: 13px; }
+.messages li { border-left: 3px solid var(--down); padding: 4px 8px; background: var(--paper); margin-bottom: 4px; }
+
+@media (max-width: 760px) {
+  .page { padding: 16px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hood-grid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1>Scenario desk</h1>
+      <p>Simulated exchange rates, ticking live. Branch a what-if scenario off the market at any moment, then watch the two diverge. Every scenario is a Soucouyant timeline with its own history.</p>
+    </div>
+    <div class="session">Session time <b id="session-clock">0:00</b></div>
+  </header>
+
+  <!-- The branch map: the memorable bit. Click a lane to move that
+       timeline's head to that moment -->
+  <section class="map" aria-label="Branch map">
+    <div class="map-head">
+      <span><b>Branch map.</b> Each lane is a timeline. A dot is where its head is; click a lane to look back to that moment.</span>
+      <span id="map-status"></span>
+    </div>
+    <svg id="map" role="img" aria-label="Timelines branching over time"></svg>
+  </section>
+
+  <form class="composer" id="composer">
+    <label for="preset">New scenario</label>
+    <select id="preset"></select>
+    <label for="parent">branching off</label>
+    <select id="parent"></select>
+    <input type="text" id="scenario-name" placeholder="Name" aria-label="Scenario name" maxlength="28">
+    <button class="primary">Branch now</button>
+    <button type="button" id="add-pair" title="Declares a new stateObject; every timeline gets it">Add NZD/USD to every desk</button>
+  </form>
+
+  <div class="desks" id="desks"></div>
+
+  <details class="hood" id="hood" open>
+    <summary>Under the hood</summary>
+    <div class="hood-grid">
+      <div>
+        <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Timeline</th><th>Branched from</th><th>Frames in memory</th><th>Head / newest</th><th>Proceeding calls</th><th>Inverted calls</th></tr>
+          </thead>
+          <tbody id="hood-rows"></tbody>
+        </table>
+        </div>
+        <p class="list-call"><code>chain.list()</code> returns <code id="list-result">[]</code></p>
+        <ul class="messages" id="messages"></ul>
+      </div>
+      <pre><code>// Each scenario is a timeline: a whole o of its own
+const scenario = chain.create('Rate cut')
+scenario.fx.eurUsd((rate) => rate * 0.998)
+scenario.head.seek('12s')
+
+// Sparklines: add points going forward,
+// remove them going back
+scenario.fx.eurUsd.sub(
+  (rate, props) => append(props.index),
+  (rate, props) => trimTo(props.index)
+)</code></pre>
+    </div>
+  </details>
+</div>
+
+<!-- The script, with comments. live-currency-dashboard.ts is the same app in TypeScript -->
+<script type="module" src="live-currency-dashboard.js"></script>
+</body>
+</html>

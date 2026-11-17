@@ -33,7 +33,7 @@ export interface Props<T> {
   readonly state: T
   /** The stateObject's address, such as 'editor > text'. */
   readonly identity: string
-  /** When the state was recorded, in milliseconds from performance.timeOrigin. */
+  /** When the state was recorded, in milliseconds since the Unix epoch, like Date.now() but finer. */
   readonly timestamp: number
   /** The next recorded state after the head, when the head is in the past. Always undefined without temporal. */
   readonly fwd: T | undefined
@@ -103,7 +103,7 @@ export interface StateObject<T> {
   unsub(...refs: SubscriptionRef[]): number
   /** Development only: limits which modules may use this stateObject. */
   scope(...paths: [ScopePath, ...ScopePath[]]): this
-  /** When the stateObject was declared, in milliseconds from performance.timeOrigin. */
+  /** When the stateObject was declared, in milliseconds since the Unix epoch, like Date.now() but finer. */
   startTime(): number
 }
 
@@ -358,8 +358,18 @@ export interface Root {
 /** The type of o: the root plus the registered tree. */
 export type O = Root & RegisteredTree
 
-/** The root of all state. */
-export declare const o: O
+/**
+ * The root of all state.
+ *
+ * Declared through a destructuring on purpose. A call statement such as
+ * `o.config({ ... })` makes TypeScript check whether it's an assertion
+ * function, which for a plainly annotated `const o: O` means resolving all
+ * of O, including the registered shape. When that shape is declared further
+ * down the same file, the check reaches back into it and TypeScript reports
+ * a circular type. Assertion checks skip names declared by destructuring,
+ * so this breaks the loop. The type of o is unchanged.
+ */
+export declare const { o }: { readonly o: O }
 
 /** Stops new names being added to the target and the namespaces above it. Returns the target. */
 export declare function freeze<T extends O | NamespaceMethods | AnyStateObject>(target: T): T

@@ -1,10 +1,10 @@
-	<img width="1296" height="830" alt="soucouyant-butterfly-yellow" src="https://github.com/user-attachments/assets/be67b61d-ac78-41ea-9064-a5f737cd2688" />
+<img width="1296" height="830" alt="soucouyant-butterfly-yellow" src="https://github.com/user-attachments/assets/be67b61d-ac78-41ea-9064-a5f737cd2688" />
 
 # Soucouyant (Alpha)
 
 [![CI](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml/badge.svg)](https://github.com/julienetie/soucouyant/actions/workflows/ci.yml)
-[![core 9.3 kB gzip](https://img.shields.io/badge/core-9.3%20kB%20gzip-blue)](#build)
-[![temporal 10.9 kB gzip](https://img.shields.io/badge/temporal-10.9%20kB%20gzip-blue)](#build)
+[![core 9.5 kB gzip](https://img.shields.io/badge/core-9.5%20kB%20gzip-blue)](#build)
+[![temporal 11.0 kB gzip](https://img.shields.io/badge/temporal-11.0%20kB%20gzip-blue)](#build)
 [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ## Relational State Management
@@ -21,6 +21,7 @@ Although Soucouyant is a full featured state management system, please remember 
 - **Bindings** for React, Vue, Angular, Svelte and Next.js.
 - **No framework dependency.** It runs in browsers and Node.js 22.5 and later.
 - **Two files.** `soucouyant` is the core: state, subscriptions and the mutex. `soucouyant/temporal` adds recorded history, time travel, trajectories and storage. Import temporal only if you need them.
+- **Timelines.** `soucouyant/polychrony` runs several timelines at once. `chain.create()` branches a new one off the current timeline, with its own states, history and head.
 - **TypeScript.** Types ship with the package. See **[TS_README.md](TS_README.md)**.
 
 ## Install
@@ -105,15 +106,18 @@ head.seek('present')
 - [Declaring state](#declaring-state)
 - [Get and publish](#get-and-publish)
 - [Subscriptions](#subscriptions)
+- [Inverted functions](#inverted-functions)
 - [Configuration](#configuration)
 - [The head](#the-head)
 - [The chain](#the-chain)
+- [Timelines](#timelines)
 - [Mutex and async callbacks](#mutex-and-async-callbacks)
 - [Finite states and trajectories](#finite-states-and-trajectories)
 - [Storage](#storage)
 - [Servers: o.isolate()](#servers-oisolate)
 - [Framework bindings](#framework-bindings)
 - [Devtools](#devtools)
+- [Examples](#examples)
 - [Performance](#performance)
 - [Changes from the original spec](#changes-from-the-original-spec)
 - [Build](#build)
@@ -122,19 +126,20 @@ head.seek('present')
 
 ## Imports
 
-| Import                            | Contents                                                                                   |
-| --------------------------------- | ------------------------------------------------------------------------------------------ |
-| `soucouyant`                      | The core: `o`, `mutex`, `freeze`, `pending`, `republish`; `finite`, `value` for TypeScript |
-| `soucouyant/temporal`             | The core, plus `head`, `chain` and `alias`                                                 |
-| `soucouyant/storage-sqlite`       | `sqliteStorage()` for Node                                                                 |
-| `soucouyant/storage-indexeddb`    | `indexedDbStorage()` for browsers                                                          |
-| `soucouyant/devtools`             | Not in `dist` yet; import `./src/devtools.js` from a source checkout                       |
-| `soucouyant/bindings/react`       | `useSoucouyant`, `useSoucouyantModel`                                                      |
-| `soucouyant/bindings/vue`         | `useSoucouyant`, `useSoucouyantModel`                                                      |
-| `soucouyant/bindings/angular`     | `injectSoucouyant`                                                                         |
-| `soucouyant/bindings/svelte`      | `fromSoucouyant`, `toStore`                                                                |
-| `soucouyant/bindings/next`        | `snapshot()` (server)                                                                      |
-| `soucouyant/bindings/next/client` | `SoucouyantState`, `useSoucouyant`, `useSoucouyantModel`                                   |
+| Import                            | Contents                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `soucouyant`                      | The core: `o`, `mutex`, `freeze`, `pending`, `republish`; `finite`, `value` for TypeScript                     |
+| `soucouyant/temporal`             | The core, plus `head`, `chain` and `alias`                                                                     |
+| `soucouyant/polychrony`           | Temporal, plus `chain.create()`, `chain.get()` and `chain.list()`, and an `alias` that works on every timeline |
+| `soucouyant/storage-sqlite`       | `sqliteStorage()` for Node                                                                                     |
+| `soucouyant/storage-indexeddb`    | `indexedDbStorage()` for browsers                                                                              |
+| `soucouyant/devtools`             | Not in `dist` yet; import `./src/devtools.js` from a source checkout                                           |
+| `soucouyant/bindings/react`       | `useSoucouyant`, `useSoucouyantModel`                                                                          |
+| `soucouyant/bindings/vue`         | `useSoucouyant`, `useSoucouyantModel`                                                                          |
+| `soucouyant/bindings/angular`     | `injectSoucouyant`                                                                                             |
+| `soucouyant/bindings/svelte`      | `fromSoucouyant`, `toStore`                                                                                    |
+| `soucouyant/bindings/next`        | `snapshot()` (server)                                                                                          |
+| `soucouyant/bindings/next/client` | `SoucouyantState`, `useSoucouyant`, `useSoucouyantModel`                                                       |
 
 ### Core and temporal
 
@@ -163,7 +168,7 @@ o`address`(state, finiteStates?, options?) // returns o, so declarations chain
 - With no state, the initial state is `pending`.
 - At most 4 namespaces deep by default (`namespaceDepth`).
 - Redeclaring an existing address keeps its state, so hot module reload never throws.
-- Reserved names: anything on `Object.prototype` and `scope`. At the top level, also `config`, `isolate`, `name`, `length`, `prototype`, `caller`, `arguments`, `apply`, `call` and `bind`.
+- Reserved names: anything on `Object.prototype` and `scope`. At the top level, also `config`, `isolate`, `head`, `chain`, `name`, `length`, `prototype`, `caller`, `arguments`, `apply`, `call` and `bind`.
 - Namespace properties are read-only, so `o.a.b = 1` throws.
 
 ```js
@@ -210,7 +215,64 @@ const [forward, back] = so.sub(proceeding, inverted, 'drive-forward', 'drive-in-
 so.unsub(ref, 'my-ref')                            // returns how many were removed
 ```
 
-`props` is `{ state, identity, timestamp, fwd, rev, states, finiteIndex, index, timeOffset, direction, pending, alias }`. `rev` is the state the subscribers last received. On reverse travel the inverted callback runs if there is one; otherwise the proceeding callback runs with `direction: 'rev'`. A subscriber that throws is reported, and the others still run.
+`props` is `{ state, identity, timestamp, fwd, rev, states, finiteIndex, index, timeOffset, direction, pending, alias }`. `rev` is the state the subscribers last received. On reverse travel the inverted callback runs if there is one (see [Inverted functions](#inverted-functions)); otherwise the proceeding callback runs with `direction: 'rev'`. A subscriber that throws is reported, and the others still run.
+
+## Inverted functions
+
+A subscription can take two functions. The first, the proceeding function, runs when time moves forward. The second, the inverted function, runs when the head moves back through history, and you write it to do the reverse of the first. If the proceeding function adds something, the inverted function takes it away.
+
+```js
+o`chat > messages`([])
+
+const list = document.querySelector('#messages')
+
+o.chat.messages.sub(
+  // Proceeding: time moved forward, so show what's new
+  (messages, props) => {
+    for (const message of messages.slice(props.rev.length)) list.append(render(message))
+  },
+  // Inverted: the head moved back, so take away what's no longer there
+  (messages) => {
+    while (list.children.length > messages.length) list.lastElementChild.remove()
+  }
+)
+
+o.chat.messages((messages) => [...messages, 'Hello'])   // proceeding adds 'Hello'
+head.seek('rev')                                         // inverted removes it
+head.seek('fwd')                                         // proceeding adds it back
+```
+
+This is what makes undo cheap for things that are expensive to rebuild. Instead of redrawing a whole view from the state, each direction makes only the change it needs.
+
+**When each one runs**
+
+| Proceeding | Inverted |
+| --- | --- |
+| Every publish, even while the head is in the past | `head.seek('rev')` and `head.seek('<3')` |
+| `head.seek('fwd')`, `'>3'` and `'present'` | Seeking to an earlier frame index, time or alias |
+| Seeking to a later frame index, time or alias | |
+| Rebuilds: `chain.replace()`, `chain.restore()`, `chain.clear()`, and the head being pulled forward when old frames leave memory | |
+
+Rebuilds run the proceeding function even when they land on an earlier state, because they replace history rather than travel through it.
+
+**What the inverted function receives**
+
+- `state` is the state the head shows now, after moving back.
+- `props.rev` is the state the subscribers had before the move: the one being undone.
+- `props.direction` is `'rev'`.
+
+Declare the second parameter to receive `props`, as with any subscriber.
+
+**One call per move, not one per frame.** A single seek calls each function at most once, with the state at the destination. `head.seek('first')` from frame 100 runs the inverted function once, not 100 times. So write the inverted function to bring things to the state it's given, as the example does by trimming the list to `messages.length`, rather than to undo exactly one step. Stepping back one frame at a time does run it once per step.
+
+**Only what changed is called.** A seek calls the functions of stateObjects whose shown state changed. Stepping back over a frame that belongs to another stateObject calls nothing on this one.
+
+**Without an inverted function,** the proceeding function runs in both directions, and `props.direction` tells it which way time moved.
+
+**Managing the pair.** `sub(proceeding, inverted)` returns both references, `[proceedingRef, invertedRef]`, and you can name them: `sub(proceeding, inverted, 'add-row', 'remove-row')`. `unsub()` removes either one on its own, or both.
+
+Inverted functions only run when the head travels, which needs `soucouyant/temporal` with `persist: true`. On a timeline from `soucouyant/polychrony`, each timeline's subscriptions run only for that timeline's own head.
+
 
 ## Configuration
 
@@ -282,6 +344,38 @@ When old frames leave memory, the state they held becomes the base state. A head
 | `buffer` | Publishes waiting behind a lock |
 
 A frame is `{ index, timestamp, identity, state, finiteIndex, alias, pending, ignored }`.
+
+## Timelines
+
+Needs `soucouyant/polychrony`, which brings temporal and the core with it.
+
+A timeline is a whole world of state with its own history. `chain.create(name)` branches one off the current timeline: the new timeline starts with everything its parent has, its states and its recorded past, then the two move independently. A timeline acts like `o`.
+
+```js
+import { o, chain } from 'soucouyant/polychrony'
+
+o.config({ persist: true })
+o`rates > usdJpy`(150)
+o.rates.usdJpy(151)
+
+const forecast = chain.create('forecast')   // branches off the main timeline now
+
+forecast.rates.usdJpy()             // 151: it starts as main was
+forecast.rates.usdJpy(149)          // only the forecast moves
+o.rates.usdJpy()                    // still 151
+
+forecast.head.seek('first')         // back through the shared past: 150
+forecast.rates.usdJpy.sub(render)   // hears only the forecast's states
+```
+
+- **Branching.** A new timeline takes its parent's states, recorded frames and head position. Frames from before the branch keep their indices on both timelines, so a stateObject stays related across timelines through their shared past.
+- **Acts like `o`.** The same tree and stateObject functions, `config()`, subscriptions, finite states and trajectories. Its controls sit on two reserved names: `timeline.head`, and `timeline.chain`, which has the whole chain interface plus `name` and `delete()`.
+- **One shape.** A declaration, or a `freeze()`, in any timeline is repeated in every timeline, each with its own values. Whether a timeline should get a shape of its own is on the [roadmap](ROADMAP.md).
+- **Settings.** `chain.create(name, options)` takes the same options as `o.config()`. Anything not given is inherited from the parent, and recording is always on. Time strings such as `'2.5s'` count from the same session start on every timeline.
+- **Storage.** Each timeline needs an adapter of its own, because an adapter holds one open database: `chain.create('forecast', { offlineStorage: { mode: 'all', adapter: indexedDbStorage() } })`. The database name defaults to the parent's with the timeline's name added, such as `soucouyant:forecast`. A timeline's storage holds the frames recorded on it.
+- **Locks and aliases.** `mutex` and `freeze()` accept any timeline's stateObjects and namespaces. `alias()` imported from `soucouyant/polychrony` names the next frame on whichever timeline records it; temporal's own `alias()` only knows the main timeline.
+- **Managing timelines.** `chain.get(name)` and `chain.list()` find them, `timeline.chain.create(name)` branches off a timeline, and `timeline.chain.delete()` discards one: it stops sharing declarations, its trajectories pause and its storage closes. Timelines branched from it carry on.
+- **Speed.** Each timeline runs its own copy of the engine, so the main timeline's code is unchanged and runs at the same speed, and each timeline is as fast as the main one. The cost is size: `soucouyant-polychrony.min.js` is about 21 kB gzipped, and each timeline holds its own states and history in memory.
 
 ## Mutex and async callbacks
 
@@ -383,6 +477,23 @@ tree(o); table(chain)
 
 Without this import, setting `observe` logs one warning, and production bundles carry no logging code.
 
+## Examples
+
+Four browser apps in `examples/browser`, each built to show a part of Soucouyant in use. Run them with:
+
+```sh
+npm run examples   # builds Soucouyant, then serves http://localhost:3030/browser/
+```
+
+| Example | Shows | Imports |
+| --- | --- | --- |
+| `shop` | The whole core: `pending` and async loading, finite states with transition rules, the mutex and its buffer, async callback locks, `freeze`, batching | `soucouyant` |
+| `paint-editor` | Undo, redo and a Photoshop-style history panel. Every stroke is a frame; history is saved to IndexedDB | `soucouyant/temporal`, `soucouyant/storage-indexeddb` |
+| `turnstile` | A keyframe walk cycle driven by a trajectory, and inverted functions that undo the world as time runs backwards | `soucouyant/temporal` |
+| `live-currency-dashboard` | What-if scenarios as timelines, branched off live rates and running alongside them | `soucouyant/polychrony` |
+
+Each example is three files: `<name>.html` (the page and its CSS), `<name>.js` (the app, commented, which the page runs) and `<name>.ts` (the same app in TypeScript, declared with `o({ ... })`; see [TS_README.md](TS_README.md#examples)). The pages import the library from `examples/`, where `npm run examples` copies the built files.
+
 ## Performance
 
 Measured with `npm run bench` on a shared 2-vCPU cloud machine (Intel Xeon, about 2–3 GHz, Node 22). Each group runs in its own process. Read the ratios rather than the absolute times; the absolute numbers will be lower on a desktop. Each **floor** is the barest hand-written JavaScript that does the same job.
@@ -445,18 +556,21 @@ The spec, as amended by the design discussion, is the reference. This implementa
 - Keyframe actions are looked up by finite index, not by function name.
 - `chain.IDBTailSliceSize()` is the method name, `trajectory.rwd()` keeps its name, and both purge variants use `'auto-stop'`.
 - New: `chain.restore`, `sub`, `unsub`, `slice`, `stateAt`, `clear`, `meta`, `replace`, `flush`; transition rules; `scope()`; `o.isolate()`; `development`, `clone`, `asyncCallbacks`, `asyncLockTimeout`, `seekTime` and `offlineStorage.adapter`.
+- New: timelines, in `soucouyant/polychrony`. A timeline branches off with its parent's states and history, then moves independently.
 - New for TypeScript: object declarations, `o({ ... })` with `finite()` and `value()`, which type every state from the object (see [TS_README.md](TS_README.md)).
 - The library is two files: the core, and temporal for history, time travel, trajectories and storage. `mutex.lock(o)` and `mutex.buffer` lock and read every stateObject in the core; `mutex.lock(chain)` and `chain.buffer` are aliases for them once temporal is loaded.
 
 ## Build
 
-`npm run build` writes JavaScript to `dist/js` and TypeScript declarations to `dist/ts`. The JavaScript is one plain ES module per entry point, readable and in StandardJS style, plus minified copies of the two library files:
+`npm run build` writes JavaScript to `dist/js` and TypeScript declarations to `dist/ts`. The JavaScript is one plain ES module per entry point, readable and in StandardJS style, plus minified copies of the three library files:
 
 ```
 dist/js/soucouyant-core.js          the core: import maps, browsers and Node
 dist/js/soucouyant-temporal.js      history; imports ./soucouyant-core.js
 dist/js/soucouyant-core.min.js      minified core
 dist/js/soucouyant-temporal.min.js  minified temporal; imports ./soucouyant-core.min.js
+dist/js/soucouyant-polychrony.js    timelines; imports ./soucouyant-temporal.js and ./soucouyant-core.js
+dist/js/soucouyant-polychrony.min.js  minified polychrony; imports the .min.js files
 dist/js/bindings/<framework>.js     react, vue, angular, svelte, next, next-client
 dist/js/storage/sqlite.js           plus sqlite-worker.js, loaded beside it
 dist/js/storage/indexeddb.js
@@ -464,14 +578,18 @@ dist/js/storage/indexeddb.js
 dist/ts/                            a .d.ts file for each entry point above
 ```
 
+Polychrony carries a timeline factory: `scripts/build-instance.js` bundles the core and temporal into one scope and wraps it in a plain arrow function, `createInstance()`, so each call makes a complete, independent timeline. The main timeline keeps using the core and temporal files themselves.
+
 The declarations are written by hand in `types/` and copied to `dist/ts`. `package.json` points every import at both, `"types"` for TypeScript and `"default"` for everything else, so neither TypeScript nor JavaScript users ever write `dist` in an import.
 
 | File | Size | gzip | Brotli |
 | --- | --- | --- | --- |
-| `soucouyant-core.js` | 63.1 KB | 16.7 KB | 14.4 KB |
-| `soucouyant-core.min.js` | 25.6 KB | 9.3 KB | 8.3 KB |
-| `soucouyant-temporal.js` | 77.7 KB | 18.1 KB | 15.8 KB |
-| `soucouyant-temporal.min.js` | 30.0 KB | 10.9 KB | 9.8 KB |
+| `soucouyant-core.js` | 66.1 KB | 17.4 KB | 15.1 KB |
+| `soucouyant-core.min.js` | 26.4 KB | 9.5 KB | 8.6 KB |
+| `soucouyant-temporal.js` | 78.0 KB | 18.2 KB | 15.9 KB |
+| `soucouyant-temporal.min.js` | 30.2 KB | 11.0 KB | 9.9 KB |
+| `soucouyant-polychrony.js` | 163.3 KB | 39.2 KB | 32.4 KB |
+| `soucouyant-polychrony.min.js` | 60.2 KB | 20.8 KB | 18.6 KB |
 
 Each file bundles everything it needs except three kinds of import, which stay imports so an app always has exactly one of each: the framework (`react`, `vue`, `@angular/core`, `svelte/reactivity`), Node built-ins (`node:`), and Soucouyant itself, which bindings import as `../soucouyant-core.js` (the Next.js server binding as `../soucouyant-temporal.js`). There is no module wrapper or runtime helper code. Rollup merges the modules into one scope, keeping their comments, and `scripts/format-dist.js` puts the output in StandardJS style. It runs ESLint with the Standard config directly, because `standard` skips anything in `.gitignore`, which includes `dist/`.
 
@@ -479,7 +597,7 @@ The two library files are built together, so they share one copy of the core. Be
 
 The minified pair is the same build passed through Terser, with comments removed and the internal exports given short names. Public export names, property names and function parameters are kept. Terser's `reduce_vars` is off: it turned `flushSync()` into a closure created on every sync publish with a subscriber, which made that publish about a third slower. With it off, the minified files benchmark the same as the unminified ones, and `npm run test:min` runs the whole suite against them.
 
-Use the minified files as a pair. `soucouyant-temporal.min.js` imports `soucouyant-core.min.js`, so mixing a minified file with an unminified one loads two copies of the core, each with its own registry. The React, Vue, Angular and Svelte bindings don't import the core, so they work with either pair. The Next.js bindings import the unminified files, which is fine because Next.js bundles and minifies them itself.
+Use the minified files together. `soucouyant-temporal.min.js` imports `soucouyant-core.min.js`, and `soucouyant-polychrony.min.js` imports both, so mixing a minified file with an unminified one loads two copies of the core, each with its own registry. The React, Vue, Angular and Svelte bindings don't import the core, so they work with either set. The Next.js bindings import the unminified files, which is fine because Next.js bundles and minifies them itself.
 
 In a browser with an import map:
 
@@ -507,16 +625,18 @@ Temporal loads the core by relative URL, so it resolves to the same file as the 
 npm install
 npm run build            # ./dist/js and ./dist/ts
 npm run size             # file sizes, and a check against the gzip budgets
-npm test                 # all three runs below, against ./src
+npm test                 # all four runs below, against ./src
 npm run test:core        # test/core: the core alone, temporal never loaded
 npm run test:temporal    # test/temporal: history, chain, trajectories, storage, devtools
 npm run test:core-with-temporal  # test/core again, with temporal preloaded
-npm run test:dist        # build, then all three runs against ./dist
-npm run test:min         # build, then all three runs against the .min.js pair
+npm run test:polychrony  # test/polychrony: timelines
+npm run test:dist        # build, then all four runs against ./dist
+npm run test:min         # build, then all four runs against the .min.js files
 npm run test:types       # compile test/types against dist/ts with TypeScript 5.0, 5.9 and 7
 npm run test:natives     # V8 optimization, fast-properties and allocation checks
 npm run lint             # StandardJS
 npm run bench            # all benchmark groups; npm run bench -- notify for one
+npm run examples         # build, then serve the examples at http://localhost:3030/browser/
 ```
 
 ## Contributing

@@ -80,7 +80,7 @@ export interface HeadMeta {
 
 /** The playhead over the chain. It decides what get returns and when subscribers fire. */
 export interface Head {
-  /** When the session started, in milliseconds from performance.timeOrigin. */
+  /** When the session started, in milliseconds since the Unix epoch, like Date.now() but finer. */
   startTime(): number
   meta(): HeadMeta
   /** Moves the head. Returns the frame index it moved to. Throws when nothing matches. */

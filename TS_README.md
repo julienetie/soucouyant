@@ -36,6 +36,7 @@ For everything that isn't about types, see the [README](README.md).
 - [Framework bindings](#framework-bindings)
 - [Tagged templates](#tagged-templates)
 - [Strict compiler options](#strict-compiler-options)
+- [Examples](#examples)
 - [Limits](#limits)
 - [Exported types](#exported-types)
 
@@ -403,6 +404,21 @@ Two of those options affect paths that aren't declared with `o({ ... })` or regi
 - with `noPropertyAccessFromIndexSignature`, it has to be written `o['app']['theme']`.
 
 Typed state, from `o({ ... })` or a registered shape, is unaffected by either.
+
+## Examples
+
+Each browser example in `examples/browser` has a TypeScript version beside its JavaScript: `shop.ts`, `paint-editor.ts`, `turnstile.ts` and `live-currency-dashboard.ts`. They're the same apps, written the way you'd write them in TypeScript, so you can read the two side by side. The pages run the `.js` files; the `.ts` files are for reading, and `npm run test:types` checks each one with `strict` on TypeScript 5.9 and 7.
+
+What to look for in them:
+
+- **Declaring with `o({ ... })`** where the JavaScript uses tagged templates, then using the typed tree it returns: `state.cart.lines()`.
+- **`value<T | Pending>(pending)`** for the shop's catalogue, which loads later, and comparing with `pending` to narrow it.
+- **`finite()` with `as const` arrays and keyframe objects:** the shop's shelves, the checkout steps, the turnstile's walk cycle.
+- **`// @ts-expect-error`** in the shop's "Try it" section, where the types catch mistakes the JavaScript only finds at runtime.
+- **Narrowing frames.** Frames hold `unknown` states, so the paint editor narrows them with a type guard before drawing.
+- **Typing timelines with `Register`.** The dashboard registers its shape so every timeline from `chain.create()` is typed. The examples import the library by relative path, so they augment `'../soucouyant-core.js'`; in an app you'd write `declare module 'soucouyant'`.
+
+The examples import `../soucouyant-core.js` and the rest from `examples/`, where `npm run examples` copies the built `.js` files and their `.d.ts` declarations side by side, so the types are found without any configuration.
 
 ## Limits
 

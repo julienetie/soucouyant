@@ -5,9 +5,10 @@
 // test/types/node_modules/soucouyant links back to this repository, so
 // imports resolve through package.json "exports" (and "typesVersions" for
 // the older node10 resolution) to dist/ts. skipLibCheck is off, so the
-// declarations themselves are checked too.
+// declarations themselves are checked too. The TypeScript versions of the
+// browser examples are checked last, against examples/*.d.ts.
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { mkdir, rm, symlink } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 
@@ -28,6 +29,7 @@ const projects = {
   core: 'the core alone; history methods must be absent',
   untyped: 'paths with no registered shape',
   register: 'a registered shape, with every strict option',
+  'register-order': 'a registered shape declared after o is in use',
   temporal: 'temporal, storage adapters and the Next.js server binding',
   polychrony: 'timelines, typed from a registered shape',
   bindings: 'React, Vue, Svelte and the Next.js client binding',
@@ -37,7 +39,7 @@ const projects = {
 // Framework types set their own TypeScript minimums (Vue and Angular need
 // 5.4 or later), so the oldest supported TypeScript checks only Soucouyant's
 // own types
-const ownProjects = ['core', 'untyped', 'register', 'temporal', 'polychrony']
+const ownProjects = ['core', 'untyped', 'register', 'register-order', 'temporal', 'polychrony']
 
 // Angular's own package can't be resolved with node10 resolution
 const unsupported = (project, resolution) => project === 'angular' && resolution === 'node10'
@@ -79,6 +81,27 @@ for (const compiler of compilers) {
       console.log(`${passed ? 'ok  ' : 'FAIL'} ${compiler.name}, ${module}/${resolution}: ${project} (${projects[project]})`)
       if (!passed) console.log((result.stdout + result.stderr).trim().replace(/^/gm, '     '))
     }
+  }
+}
+
+// The TypeScript versions of the browser examples, against the declarations
+// npm run examples:copy put in examples/. Each example is its own program,
+// as it would be in its own app: one example's registered shape shouldn't
+// leak into another's
+const examples = fileURLToPath(new URL('../examples/browser/', import.meta.url))
+const exampleFiles = readdirSync(examples).filter((name) => name.endsWith('.ts'))
+const exampleOptions = [
+  '--noEmit', '--strict', '--skipLibCheck', 'false',
+  '--target', 'es2022', '--module', 'esnext', '--moduleResolution', 'bundler',
+  '--lib', 'es2023,dom,dom.iterable'
+]
+for (const compiler of compilers.slice(0, 2)) {
+  for (const file of exampleFiles) {
+    const result = spawnSync(process.execPath, [`${root}${compiler.tsc}`, ...exampleOptions, `${examples}${file}`], { encoding: 'utf8' })
+    const passed = result.status === 0
+    if (!passed) failures++
+    console.log(`${passed ? 'ok  ' : 'FAIL'} ${compiler.name}, example: ${file}`)
+    if (!passed) console.log((result.stdout + result.stderr).trim().replace(/^/gm, '     '))
   }
 }
 

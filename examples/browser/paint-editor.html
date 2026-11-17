@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier · Soucouyant paint editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+/*
+  Atelier: a paint editor whose history panel is Soucouyant's chain.
+
+  The look is a cool studio: grey-blue walls, a white sheet in the middle,
+  and one cobalt accent for whatever is current (the tool, the head, the
+  selected step). Everything else stays quiet so the drawing and the history
+  carry the page.
+*/
+:root {
+  --wall: #e6e9f0;          /* page background */
+  --panel: #ffffff;         /* tool rail, history and drawer */
+  --ink: #171a21;           /* text */
+  --muted: #687083;         /* secondary text */
+  --line: #d5d9e3;          /* borders */
+  --cobalt: #2346d8;        /* current tool, head, selection */
+  --cobalt-soft: #e4e9fc;   /* cobalt backgrounds */
+  --future: #9aa1b2;        /* steps ahead of the head (redo) */
+  --radius-large: 14px;     /* panels */
+  --radius-small: 8px;      /* buttons and rows */
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--wall);
+  color: var(--ink);
+  font: 15px/1.45 'Bricolage Grotesque', system-ui, sans-serif;
+}
+
+button, input { font: inherit; color: inherit; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--radius-small);
+  padding: 6px 12px;
+}
+
+button:hover { border-color: var(--muted); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+
+/* ---- Page frame: top bar, then tools | canvas | history ---------------- */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+}
+
+.top-bar h1 {
+  margin: 0 auto 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.top-bar h1 small {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.save-state { color: var(--muted); font-size: 13px; }
+
+.studio {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 300px;
+  gap: 16px;
+  padding: 0 20px 20px;
+  align-items: start;
+}
+
+/* ---- Tool rail ---------------------------------------------------------- */
+
+.tools {
+  background: var(--panel);
+  border-radius: var(--radius-large);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.tool {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-color: transparent;
+}
+
+.tool svg { width: 24px; height: 24px; }
+.tool[aria-pressed="true"] { background: var(--cobalt); color: #fff; }
+
+.tools hr { width: 100%; border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(2, 22px);
+  gap: 6px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--cobalt); }
+
+.custom-colour {
+  width: 52px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  padding: 2px;
+  background: var(--panel);
+}
+
+.size-label { font-size: 12px; color: var(--muted); text-align: center; }
+
+.size {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 110px;
+  accent-color: var(--cobalt);
+}
+
+.shape-fill { font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); }
+
+/* ---- Canvas: the sheet, plus an overlay for the stroke in progress ------- */
+
+.sheet-area { display: flex; flex-direction: column; gap: 12px; }
+
+.sheet {
+  position: relative;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(23, 26, 33, 0.08), 0 12px 32px -12px rgba(23, 26, 33, 0.25);
+  aspect-ratio: 3 / 2;
+  touch-action: none;
+}
+
+.sheet canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sheet .overlay { cursor: crosshair; }
+
+/* Showing the past: the sheet gets a cobalt edge so it's obvious that the
+   canvas isn't the newest state, and that drawing now discards redo steps */
+.sheet.in-the-past { box-shadow: 0 0 0 3px var(--cobalt), 0 12px 32px -12px rgba(23, 26, 33, 0.25); }
+
+/* ---- Time scrubber under the sheet: the memorable bit ------------------- */
+
+.scrubber {
+  background: var(--panel);
+  border-radius: var(--radius-large);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.scrubber input { width: 100%; accent-color: var(--cobalt); }
+.scrubber output { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; min-width: 9ch; text-align: right; }
+.scrubber .buttons { display: flex; gap: 6px; }
+
+/* ---- History panel ------------------------------------------------------ */
+
+.side { display: flex; flex-direction: column; gap: 16px; }
+
+.panel {
+  background: var(--panel);
+  border-radius: var(--radius-large);
+  padding: 14px;
+}
+
+.panel h2 { margin: 0 0 10px; font-size: 16px; font-weight: 700; }
+.panel h2 span { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 6px; }
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+
+.step:hover { background: var(--wall); }
+.step .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.15); }
+.step .number { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.step.current { background: var(--cobalt-soft); color: var(--cobalt); font-weight: 500; }
+.step.ahead { color: var(--future); }
+.step.ahead .dot { opacity: 0.4; }
+.step.hidden-step .name { text-decoration: line-through; }
+.step.bookmark .name::before { content: '⚑ '; }
+
+.eye {
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bookmarks { display: flex; gap: 6px; margin-top: 10px; }
+.bookmarks input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-small); padding: 6px 8px; }
+.bookmark-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bookmark-list button { font-size: 13px; padding: 3px 10px; border-radius: 999px; }
+
+/* ---- Under the hood ----------------------------------------------------- */
+
+.hood summary { cursor: pointer; font-weight: 700; }
+.hood dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 12px 0; font-size: 13px; }
+.hood dt { color: var(--muted); }
+.hood dd { margin: 0; font-variant-numeric: tabular-nums; }
+.hood .last-call { font-size: 13px; padding: 8px; border-radius: var(--radius-small); background: var(--wall); }
+.hood .last-call b { color: var(--cobalt); }
+.feed { list-style: none; margin: 10px 0 0; padding: 0; font-size: 12px; color: var(--muted); max-height: 140px; overflow-y: auto; }
+.feed li { padding: 2px 0; border-bottom: 1px solid var(--wall); }
+.hood pre { font-size: 12px; background: var(--wall); padding: 10px; border-radius: var(--radius-small); white-space: pre-wrap; }
+
+@media (max-width: 1000px) {
+  .studio { grid-template-columns: minmax(0, 1fr); }
+  .tools { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .tools hr { display: none; }
+  .size { writing-mode: horizontal-tb; direction: ltr; height: auto; width: 120px; }
+  .swatches { grid-template-columns: repeat(6, 22px); }
+}
+
+@media (max-width: 640px) {
+  .top-bar { flex-wrap: wrap; padding: 12px 16px; }
+  .top-bar h1 { flex-basis: 100%; }
+  .top-bar h1 small { display: block; margin-left: 0; }
+  .save-state { flex-basis: 100%; }
+  .studio { padding: 0 16px 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="top-bar">
+  <h1>Atelier <small>Every step is a frame on Soucouyant's chain</small></h1>
+  <span class="save-state" id="save-state">Opening history…</span>
+  <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+  <button id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+  <button id="new-canvas">New canvas</button>
+</header>
+
+<main class="studio">
+
+  <!-- Tools. Their settings are plain JavaScript, not stateObjects: see the
+       note above `brush` in the script -->
+  <nav class="tools" aria-label="Tools">
+    <button class="tool" data-tool="brush" aria-pressed="true" title="Brush (B)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 20c2 0 4-1 4-3s-1-3 1-5l8-8 3 3-8 8c-2 2-3 1-5 1s-3 2-3 4"/></svg>
+    </button>
+    <button class="tool" data-tool="eraser" aria-pressed="false" title="Eraser (E)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M14 4l6 6-9 9H6l-3-3 11-12z"/><path d="M9 9l6 6M6 19h14"/></svg>
+    </button>
+    <button class="tool" data-tool="line" aria-pressed="false" title="Line (L)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 19L19 5"/></svg>
+    </button>
+    <button class="tool" data-tool="rect" aria-pressed="false" title="Rectangle (R)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>
+    </button>
+    <button class="tool" data-tool="ellipse" aria-pressed="false" title="Ellipse (O)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg>
+    </button>
+    <button class="tool" data-tool="fill" aria-pressed="false" title="Fill (F)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 11l7-7 8 8-7 7z"/><path d="M19 15c1 2 2 3 2 4a2 2 0 01-4 0c0-1 1-2 2-4z" fill="currentColor"/></svg>
+    </button>
+    <hr>
+    <div class="swatches" id="swatches"></div>
+    <input class="custom-colour" id="custom-colour" type="color" value="#2346d8" title="Any colour">
+    <hr>
+    <label class="size-label" for="size">Size <output id="size-value">8</output></label>
+    <input class="size" id="size" type="range" min="1" max="80" value="8">
+    <label class="shape-fill"><input type="checkbox" id="fill-shapes"> Solid shapes</label>
+  </nav>
+
+  <section class="sheet-area">
+    <div class="sheet" id="sheet">
+      <!-- The document: only ever painted by replaying frames from the chain -->
+      <canvas id="canvas" width="1200" height="800"></canvas>
+      <!-- The stroke being drawn right now, before it becomes a frame -->
+      <canvas id="overlay" class="overlay" width="1200" height="800"></canvas>
+    </div>
+
+    <div class="scrubber">
+      <div class="buttons">
+        <button id="first" title="Go to the first step">First</button>
+      </div>
+      <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Move through history">
+      <div class="buttons">
+        <output id="scrub-position">Step 1 of 1</output>
+        <button id="present" title="Go to the newest step">Newest</button>
+      </div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>History <span id="history-count"></span></h2>
+      <ol class="history" id="history"></ol>
+      <form class="bookmarks" id="bookmark-form">
+        <input id="bookmark-name" placeholder="Bookmark name" maxlength="40" aria-label="Bookmark name">
+        <button>Bookmark</button>
+      </form>
+      <div class="bookmark-list" id="bookmark-list"></div>
+    </section>
+
+    <details class="panel hood" open>
+      <summary>Under the hood</summary>
+      <dl>
+        <dt>Head at frame</dt><dd id="stat-head">–</dd>
+        <dt>Newest frame</dt><dd id="stat-present">–</dd>
+        <dt>Frames in memory</dt><dd id="stat-memory">–</dd>
+        <dt>Frames in IndexedDB</dt><dd id="stat-storage">–</dd>
+      </dl>
+      <div class="last-call" id="last-call">Nothing has run yet.</div>
+      <ul class="feed" id="feed" aria-label="Frames recorded"></ul>
+      <pre><code>o.paint.operation.sub(
+  drawNewOperations, // proceeding: head moved forward
+  repaintToHead      // inverted: head moved back
+)</code></pre>
+    </details>
+  </aside>
+</main>
+
+<!-- The script, with comments. paint-editor.ts is the same app in TypeScript -->
+<script type="module" src="paint-editor.js"></script>
+</body>
+</html>

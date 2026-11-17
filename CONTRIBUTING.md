@@ -63,7 +63,7 @@ Benchmarks on shared machines are noisy. Run each side a few times and compare t
 
 The TypeScript declarations are written by hand in `types/`, one `.d.ts` per entry point, and copied to `dist/ts` by the build. When you change a public API, change its declaration in the same pull request.
 
-`npm run build && npm run test:types` compiles the projects in `test/types/` against the built package with TypeScript 5.0, 5.9 and 7, under each module resolution mode. Each project tests both sides: code that should compile, and mistakes marked `// @ts-expect-error` that must not. Add both for a new API. `test/types/temporal/readme.ts` holds the examples from `TS_README.md`.
+`npm run build && npm run test:types` compiles the projects in `test/types/` against the built package with TypeScript 5.0, 5.9 and 7, under each module resolution mode. Each project tests both sides: code that should compile, and mistakes marked `// @ts-expect-error` that must not. Add both for a new API. `test/types/temporal/readme.ts` holds the examples from `TS_README.md`, and the TypeScript versions of the browser examples in `examples/browser/*.ts` are checked too, each as its own program. Change an example's `.js` and `.ts` together.
 
 ## Size
 

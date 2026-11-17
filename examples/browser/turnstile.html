@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turnstile · Soucouyant keyframe animation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/*
+  Turnstile: a walk cycle driven by a Soucouyant trajectory, in a world
+  where time can run backwards.
+
+  Two colours carry the whole idea. Red is time running forward; blue is
+  time inverted. The page, the agent's scarf, the clock and the direction
+  marker all switch between them together, so you always know which way
+  time is going. Everything else is concrete grey and ink.
+*/
+:root {
+  --concrete: #dfe3e6;     /* page */
+  --slab: #f3f5f6;         /* stage and panels */
+  --ink: #1a1d21;          /* text, the agent */
+  --muted: #5d6670;        /* secondary text */
+  --line: #c4cbd1;         /* borders, the ground */
+  --forward: #d6452f;      /* time running forward */
+  --inverted: #2f6bd8;     /* time running backward */
+  --world: var(--forward); /* whichever is current */
+}
+
+body.inverted { --world: var(--inverted); }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--concrete);
+  color: var(--ink);
+  font: 16px/1.5 Barlow, system-ui, sans-serif;
+}
+
+button, input { font: inherit; color: inherit; }
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--slab);
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-family: 'Chakra Petch', sans-serif;
+  font-weight: 500;
+}
+
+button:hover:not(:disabled) { border-color: var(--ink); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--world); outline-offset: 2px; }
+button.go { background: var(--world); border-color: var(--world); color: #fff; }
+
+.page { max-width: 1120px; margin: 0 auto; padding: 28px 24px 40px; }
+
+/* ---- Header: the title and a square that reads the same every way ------ */
+
+header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+
+h1 {
+  margin: 0;
+  font: 700 clamp(40px, 7vw, 72px)/1 'Chakra Petch', sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* The title's letters run left to right in forward time and mirror when
+   time is inverted */
+h1 span { display: inline-block; transition: transform 0.5s; }
+body.inverted h1 span { transform: scaleX(-1); }
+
+header p { margin: 10px 0 0; max-width: 60ch; color: var(--muted); }
+
+/* The Sator square, about two thousand years old: the same read across,
+   down, backwards or upwards. A palindrome is what this page animates */
+.sator {
+  display: grid;
+  grid-template-columns: repeat(5, 22px);
+  gap: 2px;
+  font: 700 15px/22px 'Chakra Petch', sans-serif;
+  text-align: center;
+}
+
+.sator span { background: var(--slab); border-radius: 2px; }
+.sator span.centre { background: var(--world); color: #fff; transition: background 0.4s; }
+
+/* ---- Stage -------------------------------------------------------------- */
+
+.stage {
+  margin-top: 24px;
+  background: var(--slab);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border-top: 6px solid var(--world);
+  transition: border-color 0.4s;
+}
+
+.stage svg { display: block; width: 100%; height: auto; }
+
+.readout {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Chakra Petch', sans-serif;
+  pointer-events: none;
+}
+
+.clock { font-size: 34px; font-weight: 700; color: var(--world); font-variant-numeric: tabular-nums; transition: color 0.4s; }
+.direction { font-size: 15px; font-weight: 500; text-align: right; }
+.direction b { display: block; font-size: 22px; color: var(--world); transition: color 0.4s; }
+
+/* The agent: limbs are lines, redrawn each animation frame */
+.limb { stroke: var(--ink); stroke-width: 9; stroke-linecap: round; fill: none; }
+.limb.back { stroke: #4a525b; }
+.scarf { fill: var(--world); transition: fill 0.4s; }
+
+/* Footprints: stamped in forward time, lifted in inverted time */
+.footprint { fill: var(--ink); opacity: 0.55; transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .footprint.stamp { animation: stamp 0.25s ease-out; }
+  .footprint.lift { animation: lift 0.25s ease-in forwards; }
+  @keyframes stamp { from { transform: scale(2.2); opacity: 0; } }
+  @keyframes lift { to { transform: scale(2.2); opacity: 0; } }
+}
+
+/* The vase: its shards fly apart, and fly back together the same way */
+.shard {
+  fill: #8a96a3;
+  stroke: var(--slab);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* The revolving door spins while time is turning round */
+.door { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  body.turning .door { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+}
+
+/* ---- Controls ----------------------------------------------------------- */
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.controls .spacer { flex: 1; }
+.timeline-track { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; margin-top: 12px; font-size: 14px; color: var(--muted); }
+.timeline-track input { width: 100%; accent-color: var(--world); }
+.story { margin: 12px 0 0; min-height: 1.5em; }
+
+/* ---- Under the hood ----------------------------------------------------- */
+
+.hood { margin-top: 24px; background: var(--slab); border-radius: 8px; padding: 16px 18px; }
+.hood summary { cursor: pointer; font: 700 18px 'Chakra Petch', sans-serif; }
+.hood-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 14px; }
+.hood table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.hood th { text-align: left; color: var(--muted); font-weight: 500; }
+.hood th, .hood td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.hood td .inverted-count { color: var(--inverted); font-weight: 500; }
+.hood dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 14px; margin: 12px 0 0; }
+.hood dt { color: var(--muted); }
+.hood dd { margin: 0; font-variant-numeric: tabular-nums; }
+.hood pre { margin: 0; font-size: 12px; background: var(--concrete); padding: 12px; border-radius: 4px; white-space: pre-wrap; }
+
+@media (max-width: 720px) {
+  .page { padding: 20px 16px 32px; }
+  header { grid-template-columns: 1fr; }
+  .hood-grid { grid-template-columns: minmax(0, 1fr); }
+  .clock { font-size: 24px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div>
+      <h1><span>T</span><span>U</span><span>R</span><span>N</span><span>S</span><span>T</span><span>I</span><span>L</span><span>E</span></h1>
+      <p>An agent walks to the turnstile and time turns round. Going forward, a trajectory moves him through the keyframes of a walk cycle and he leaves footprints and breaks a vase. Coming back, the head runs back along the chain and the inverted functions undo it all: the footprints lift, the vase puts itself back together.</p>
+    </div>
+    <div class="sator" aria-label="The Sator square, a two-way palindrome">
+      <span>S</span><span>A</span><span>T</span><span>O</span><span>R</span>
+      <span>A</span><span>R</span><span>E</span><span>P</span><span>O</span>
+      <span>T</span><span>E</span><span class="centre">N</span><span>E</span><span>T</span>
+      <span>O</span><span>P</span><span>E</span><span>R</span><span>A</span>
+      <span>R</span><span>O</span><span>T</span><span>A</span><span>S</span>
+    </div>
+  </header>
+
+  <section class="stage" aria-label="The stage">
+    <div class="readout">
+      <span class="clock" id="clock">0:00.0</span>
+      <span class="direction"><b id="direction-arrow">▶ Forward</b><span id="direction-note">Time runs forward</span></span>
+    </div>
+    <svg viewBox="0 0 960 360" id="stage" role="img" aria-label="An agent walking towards a revolving door">
+      <!-- The ground -->
+      <line x1="0" x2="960" y1="300" y2="300" stroke="var(--line)" stroke-width="2"/>
+      <g id="footprints"></g>
+
+      <!-- The vase, as five shards -->
+      <g id="vase"></g>
+
+      <!-- The turnstile: a revolving door -->
+      <g transform="translate(880 230)">
+        <rect x="-46" y="-90" width="92" height="160" rx="6" fill="none" stroke="var(--line)" stroke-width="3"/>
+        <g class="door">
+          <line x1="-40" x2="40" y1="-10" y2="-10" stroke="var(--world)" stroke-width="5"/>
+          <line x1="0" x2="0" y1="-50" y2="30" stroke="var(--world)" stroke-width="5"/>
+        </g>
+      </g>
+
+      <!-- The agent. Limbs at the back are drawn first -->
+      <g id="agent">
+        <line class="limb back" id="arm-back-upper"/><line class="limb back" id="arm-back-lower"/>
+        <line class="limb back" id="leg-back-upper"/><line class="limb back" id="leg-back-lower"/>
+        <line class="limb" id="torso" style="stroke-width: 16"/>
+        <path class="scarf" id="scarf"/>
+        <circle id="head" r="14" fill="var(--ink)"/>
+        <line class="limb" id="leg-front-upper"/><line class="limb" id="leg-front-lower"/>
+        <line class="limb" id="arm-front-upper"/><line class="limb" id="arm-front-lower"/>
+      </g>
+    </svg>
+  </section>
+
+  <div class="controls">
+    <button class="go" id="walk">Walk</button>
+    <button id="moonwalk" title="trajectory.reverse(): the keyframes play in reverse order">Moonwalk</button>
+    <button id="invert" title="Run the head back along the chain">Invert time</button>
+    <button id="replay" title="Run the head forward again to the present">Run forward again</button>
+    <span class="spacer"></span>
+    <button id="reset">Start over</button>
+  </div>
+  <div class="timeline-track">
+    <span>Recorded past</span>
+    <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Move the head through the recorded past">
+    <span id="scrub-label">Frame 0</span>
+  </div>
+  <p class="story" id="story">Press Walk.</p>
+
+  <details class="hood" open>
+    <summary>Under the hood</summary>
+    <div class="hood-grid">
+      <div>
+        <table>
+          <thead><tr><th>stateObject</th><th>State at the head</th><th>Proceeding</th><th>Inverted</th></tr></thead>
+          <tbody id="calls"></tbody>
+        </table>
+        <dl id="stats"></dl>
+      </div>
+      <pre><code>// Each keyframe is a pose, held for `duration` ms.
+// The trajectory steps through them and runs each
+// keyframe's action as it becomes active
+o`agent > pose`('contact-front', walkCycle)
+o.agent.pose.trajectory({ keyframeActions: true })
+o.agent.pose.trajectory.play()
+
+// Forward: stamp new footprints.
+// Inverted: lift the ones that haven't happened yet
+o.world.footprints.sub(stampFootprints, liftFootprints)
+
+// Inversion is the head running back along the chain
+head.seek('rev')</code></pre>
+    </div>
+  </details>
+</div>
+
+<!-- The script, with comments. turnstile.ts is the same app in TypeScript -->
+<script type="module" src="turnstile.js"></script>
+</body>
+</html>
